@@ -14,3 +14,5 @@ require 'uri'
 require 'pp'
 require 'xmlsimple'
 require 'fileutils'
+require 'album_credits'
+
