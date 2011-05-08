@@ -19,14 +19,16 @@ module Rovi
   end
 
   def self.album_lookup_url(artist, album)
-    opts = { :query => "#{artist} #{album}".gsub(/\(.*\)/,'').strip,
-             :facet => 'type',
-             :size => '1',
-             :entitytype => 'album'}.merge(default_opts)
+    all_opts = { :query => "#{artist} #{album}".gsub(/\(.*\)/,'').strip,
+                 :facet => 'type',
+                 :size => '1',
+                 # :include => 'album:images,credits',
+                 :entitytype => 'album'}.merge(default_opts)
 
-    opts_string = opts.map{ |k,v| "#{k}=#{URI.escape(v)}"}.join('&')
+    opts_string = all_opts.map{ |k,v| "#{k}=#{URI.escape(v)}"}.join('&')
     "#{@base_url}/search/v1/search?#{opts_string}"
   end
+
 
   def self.image_lookup_url(albumid)
     opts = { :albumid => albumid }.merge(default_opts)

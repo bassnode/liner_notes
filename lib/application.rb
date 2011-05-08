@@ -33,7 +33,7 @@ class Application
 
   def update_time_display(sender)
     debug "TIMER #{Time.now}"
-    @title_label.text = ITUNES.playerPosition
+    # @title_label.text = ITUNES.playerPosition
     run if song_changed?
   end
 
@@ -46,25 +46,26 @@ class Application
       app.delegate = self
       @window = window(:frame => [0, 0, 1000, 1000], :style => [:titled, :closable, :miniaturizable, :resizable], :title => "#{current_track[:artist]} - #{current_track[:title]}") do |win|
         win.contentView.margin  = 0
-        # win.view = layout_view(:layout => {:expand => [:width, :height],:padding => 0, :margin => 0}) do |vert|
-        @title_label = label  :text => "#{current_track[:artist]} - #{current_track[:title]}",
-                              :font => font(:name => "Arial", :size => 22),
-                              :text_align => :center,
-                              :layout => {:start => false, :align => :center}
+
+        # @title_label = label  :text => "#{current_track[:artist]} - #{current_track[:title]}",
+                              # :font => font(:name => "Arial", :size => 22),
+                              # :text_align => :center,
+                              # :layout => {:start => false, :align => :center}
 
         @discog = text_field :frame => [0,0,200,200],
                              :text => "DISCO",
                              :editable => false,
                              :layout => {:expand => :width, :start => true, :align => :center}
 
-        @lyrics = text_field :frame => [0,0,200,200],
-                             :text => "lyricoh",
-                              :font => font(:name => "Arial", :size => 10),
-                             :editable => false,
-                             :layout => {:expand => :width, :start => true, :align => :center}
+          @lyrics = text_field( :frame => [0,0,200,200],
+                               :text => "lyricoh",
+                               :font => font(:name => "Arial", :size => 10),
+                               :editable => false,
+                               :layout => {:expand => :width, :start => true, :align => :center})
+
 
         @cover = image_view(:frame => [0,0,1000,700])
-        win << @title_label
+        # win << @title_label
         win << @discog
         win << @lyrics
         win << @cover
@@ -105,12 +106,13 @@ class Application
   def load_song_details
     create_album_dir
     fetch_artwork
-    fetch_discog
     fetch_lyrics
+    # fetch_discog
   end
 
   # TODO: Implement their pixel_tracking_url thing so they don't ban me.
   def fetch_lyrics
+    @lyrics.text = ''
     url = "http://api.musixmatch.com/ws/1.1/track.search?apikey=3bc1042fde1ac8c1979c400d6f921320&q_artist=#{clean_artist_name(true)}&q_track=#{clean_track_name(true)}&format=xml&page_size=1&f_has_lyrics=1"
     puts url
     DataRequest.new.get(url) do |data|
@@ -130,46 +132,84 @@ class Application
   end
 
   def fetch_discog
-    Future.new do
-      begin
-        ac = AlbumCredits::Finder.new
-        releases = ac.find_releases(current_track[:artist], current_track[:album])#, current_track[:year])
-        sorted_releases = releases.inject([]) do |rel_array, release|
-          unless (engineers = ac.engineers_for_release(release)).nil?
-            rel_array << [release, engineers]
-          end
-          rel_array
-        end.sort_by{|arr| arr.last.size}.reverse
+    begin
+      ac = AlbumCredits::Finder.new
+      releases = ac.find_releases(current_track[:artist], current_track[:album])#, current_track[:year])
+      sorted_releases = releases.inject([]) do |rel_array, release|
+        engineers = ac.engineers_for_release(release) || []
+        rel_array << [release, engineers]
+        rel_array
+      end.sort_by{|arr| arr.last.size}.reverse
 
-        if sorted_releases.empty?
-          debug "No engineering data :/"
-          return
-        end
-
+      if sorted_releases.empty?
+        debug "No release data"
+      else
         release, engineers = sorted_releases.shift
+        # debug releases
+        # puts "-------------------------------------------"
+        # debug engineers
 
-        str = "#{release.tracklist.size} songs"
-        str << release.notes
-        str << "\n"
+        str = ''#release.inspect
         str << engineers.map{|engineer| "#{engineer.role} #{engineer.name}"}.join("\n")
+        str << "\n"
+        str << release.notes unless release.notes.nil?
         @discog.text = str
-      rescue Exception => e
-        debug "Failed at getting discog info: #{e}"
       end
+    rescue Exception => e
+      debug "Failed at getting discog info: #{e}"
+      puts e.backtrace.join("\n")
     end
   end
 
+  # This is ridiculous.
+  # I'm making 3 calls to Rovi because either their responses are formatted
+  # weirdly or both JSON and XmlSimple flatten out collections in MacRuby..???
+  def fetch_artwork
+
+    @discog.text = ''
+    @cover.file = File.expand_path(File.join(File.dirname(__FILE__), "..", "resources", "loading.gif"))
+    # NOOP ATM - not saving imgs
+    if already_have_cover?
+      @cover.file = track_file_location(:cover)
+      debug "HAVE COVER _ SKIPPING"
+      return
+    end
+
+    artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
+
+    puts artwork_url
+    DataRequest.new.get(artwork_url) do |data|
+      pp data
+      hashed = XmlSimple.xml_in(data)
+      album_id = hashed['results'][0]['data'][0]['id'][0]
+      credits_url = hashed['results'][0]['data'][0]['album'][0]['creditsUri'][0]
+
+      debug "Found albumid #{Rovi.image_lookup_url(album_id)}"
+      DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
+        hashed = XmlSimple.xml_in(data)
+        @cover.url = hashed['images'][0]['front'][0]['Image'].sort_by{ |img| img['height'][0].to_i }.reverse.first['url'][0]
+      end
+
+      DataRequest.new.get(credits_url) do |data|
+        hashed = XmlSimple.xml_in(data)
+        creds = hashed['credits'][0]['AlbumCredit'].inject([]) do |creds, c|
+          creds << "#{c['name'][0]} - #{c['credit'][0]}"
+        end
+        @discog.text = creds.join("\n")
+      end
+    end
+  end
 
   def clean_artist_name(use_in_url=false)
     clean_string current_track[:artist], use_in_url
   end
 
   def clean_track_name(use_in_url=false)
-    clean_string current_track[:title], use_in_url
+    clean_string current_track[:title].gsub(/\(.+\)/, ''), use_in_url
   end
 
   def clean_album_name(use_in_url=false)
-    clean_string current_track[:album], use_in_url
+    clean_string current_track[:album].gsub(/(\sLP|EP\s*)$/,''), use_in_url
   end
 
   def clean_string(string, use_in_url=false)
@@ -201,40 +241,6 @@ class Application
 
   def already_have_cover?
     File.exists?(track_file_location(:cover))
-  end
-
-  def fetch_artwork
-
-    if already_have_cover?
-      @cover.file = track_file_location(:cover)
-      debug "HAVE COVER _ SKIPPING"
-      return
-    end
-
-    artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
-
-    puts artwork_url
-    DataRequest.new.get(artwork_url) do |data|
-      hashed = XmlSimple.xml_in(data)
-      album_id = hashed['results'][0]['data'][0]['id'][0]
-
-      debug "Found albumid #{Rovi.image_lookup_url(album_id)}"
-      DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
-        hashed = XmlSimple.xml_in(data)
-        @all_covers = hashed['images'][0]['front'][0]['Image']
-
-
-        @cover.url = @all_covers.sort_by{ |img| img['height'][0].to_i }.reverse.first['url'][0]
-        # We can add the rotator once we have another image source.
-        # Right now, Rovi just sends back 5 of the same pic in diff sizes.
-        # rotator = NSTimer.scheduledTimerWithTimeInterval 2,
-          # target: self,
-          # selector: 'rotate_cover_image:',
-          # userInfo: nil,
-          # repeats: true
-
-      end
-    end
   end
 
   def rotate_cover_image(sender)
