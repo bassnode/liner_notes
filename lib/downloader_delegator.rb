@@ -13,7 +13,7 @@ class DownloadDelegator
   end
 
   def downloadDidBegin(dl_process)
-    puts "downloading..."
+    # puts "downloading..."
   end
 
   def download(dl_process, decideDestinationWithSuggestedFilename:filename)

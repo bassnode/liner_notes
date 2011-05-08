@@ -1,19 +1,4 @@
-require 'rubygems'
-require 'hotcocoa'
-require 'hotcocoa/graphics'
-
-framework 'Foundation'
-framework 'ScriptingBridge'
-framework 'WebKit'
-
-require 'lib/future'
-require 'lib/data_request'
-require 'lib/downloader_delegator'
-require 'lib/rovi'
-require 'uri'
-require 'pp'
-require 'xmlsimple'
-require 'fileutils'
+require 'lib/liner_notes'
 
 CACHE_DIR = NSHomeDirectory().stringByAppendingPathComponent(".liner_notes")
 ITUNES = SBApplication.applicationWithBundleIdentifier("com.apple.itunes")
@@ -34,6 +19,8 @@ class Application
   include HotCocoa
   include Graphics
 
+  attr_accessor :cover
+
   def current_track
     {
       :title => ITUNES.currentTrack.name,
@@ -43,35 +30,51 @@ class Application
     }
   end
 
+  def update_time_display(sender)
+    debug "TIMER #{Time.now}"
+    @title_label.text = ITUNES.currentTrack.duration - ITUNES.playerPosition
+    run if song_changed?
+  end
+
+  def song_changed?
+    ITUNES.playerPosition.to_i < 1
+  end
+
   def start
     application :name => "Liner Notes" do |app|
       app.delegate = self
-      window :frame => [0, 0, 1000, 800], :view => :nolayout, :title => "#{current_track[:artist]} - #{current_track[:title]}" do |win|
-        # @label = label(:text => current_track[:title], :layout => {:start => false})
-        # win << @label
+      window :frame => [0, 0, 1000, 1000], :style => [:titled, :closable, :miniaturizable, :resizable], :view => :nolayout, :title => "#{current_track[:artist]} - #{current_track[:title]}" do |win|
 
+        @cover = image_view(:frame => [0,0,1000,1000])
+        # win << @cover
         win.view = layout_view(:layout => {:expand => [:width, :height],:padding => 0, :margin => 0}) do |vert|
           vert << layout_view(:frame => [0, 0, 0, 40], :mode => :horizontal,:layout => {:padding => 0, :margin => 0,:start => false, :expand => [:width]}) do |horiz|
-            horiz << label(:text => "Feed", :layout => {:align => :center})
-            # img = Image.new('/Users/ed/.liner_notes/au/verbs/artwork/cover.jpg')
-            # canvas = Canvas.for_rendering(:size => [400,400])
-            # canvas.draw(img,0,0)
-            # horiz << canvas
+            @title_label = label(:text => "#{current_track[:artist]} - #{current_track[:title]}", :layout => {:start => false, :align => :center})
+            horiz << @title_label
           end
+          vert << @cover
 
-          vert << layout_view(:frame => [0, 0, 0, 0], :layout => {:expand => [:width, :height]}, :margin => 0, :spacing => 0) do |view|
-            web_view = web_view(:layout => {:expand =>  [:width, :height]}, :url => "http://photos4.meetupstatic.com/photos/event/a/6/d/3/global_9822707.jpeg")
-            view << web_view
-          end
+          # vert << layout_view(:layout => {:padding => 0, :margin => 0,:start => false, :expand => [:width, :height]}) do |pic|
+            # pic << @cover = web_view(:layout => {:expand =>  [:width, :height]}, :url => "http://photos4.meetupstatic.com/photos/event/a/6/d/3/global_9822707.jpeg")
+          # end
+          @timer = NSTimer.scheduledTimerWithTimeInterval 1,
+                                                           target: self,
+                                                           selector: 'update_time_display:',
+                                                           userInfo: nil,
+                                                           repeats: true
+
         end
-
-
         ITUNES.run
-        load_song_details
-        display_liner_notes
+        run
         win.will_close { exit }
       end
     end
+  end
+
+  def run
+    debug "RUUUUUUUUN"
+    load_song_details
+    display_liner_notes
   end
 
   def debug(obj)
@@ -131,24 +134,29 @@ class Application
   end
 
   def fetch_artwork
-    # artwork_url = "http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=b25b959554ed76058ac220b7b2e0a026&autocorrect=1&artist=#{clean_artist_name(true)}&album=#{clean_album_name(true)}"
-    # cover_url = hashed['album'][0]['image'].last['content']
 
-    return if already_have_cover?
+    if already_have_cover?
+      @cover.file = track_file_location(:cover)
+      debug "HAVE COVER _ SKIPPING"
+      return
+    end
 
     artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
+
     DataRequest.new.get(artwork_url) do |data|
       hashed = XmlSimple.xml_in(data)
-      if hashed['error']
-        debug "LastFM artwork Fail: #{hashed}"
-      else
-        album_id = hashed['results'][0]['data'][0]['id'][0]
-        DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
-          hashed = XmlSimple.xml_in(data)
-          cover_url = hashed['images'][0]['front'][0]['Image'].sort_by{ |img| img['height'][0].to_i }.last['url'][0]
-          DownloadDelegator.new(track_file_location(:cover)).get(cover_url) unless cover_url.empty?
-        end
+      album_id = hashed['results'][0]['data'][0]['id'][0]
 
+      DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
+        hashed = XmlSimple.xml_in(data)
+        cover = hashed['images'][0]['front'][0]['Image'].sort_by{ |img| img['height'][0].to_i }.last
+
+        if cover['url'][0].empty?
+          debug "No cover art :("
+        else
+          @cover.url = cover['url'][0]
+          DownloadDelegator.new(track_file_location(:cover)).get(cover['url'][0])
+        end
       end
     end
   end
