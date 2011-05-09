@@ -1,20 +1,17 @@
+# TODO
+#  * Need to do more pruning of song/album/title names before searching
+#    remote APIs or else you get shite results :/
+#  * Handle inconsistent network/remote services
+#  *
+#
 require 'lib/liner_notes'
 
 CACHE_DIR = NSHomeDirectory().stringByAppendingPathComponent(".liner_notes")
 ITUNES = SBApplication.applicationWithBundleIdentifier("com.apple.itunes")
 load_bridge_support_file File.expand_path(File.join(File.dirname(__FILE__), '..', 'ext', 'iTunes.bridgesupport'))
-
 # time_left = itunes.currentTrack.duration - itunes.playerPosition
-class SBElementArray
-  def [](value)
-    self.objectWithName(value)
-  end
-end
 
-
-# Replace the following code with your own hotcocoa code
-
-class Application
+class LinerNotes
 
   include HotCocoa
   include Graphics
@@ -23,11 +20,11 @@ class Application
 
   def current_track
     {
-      :title => ITUNES.currentTrack.name,
+      :title  => ITUNES.currentTrack.name,
       :artist => ITUNES.currentTrack.artist,
-      :album => ITUNES.currentTrack.album,
-      :genre => ITUNES.currentTrack.genre,
-      :year => ITUNES.currentTrack.year
+      :album  => ITUNES.currentTrack.album,
+      :genre  => ITUNES.currentTrack.genre,
+      :year   => ITUNES.currentTrack.year
     }
   end
 
@@ -39,6 +36,9 @@ class Application
 
   def song_changed?
     ITUNES.playerPosition.to_i < 1
+    # if ITUNES.playerPosition.to_i < 1 && !@song_changed
+      # @song_changed = Time.now.to_i
+    # end
   end
 
   def start
@@ -59,7 +59,7 @@ class Application
 
           @lyrics = text_field( :frame => [0,0,200,200],
                                :text => "lyricoh",
-                               :font => font(:name => "Arial", :size => 10),
+                               # :font => font(:name => "Arial", :size => 10),
                                :editable => false,
                                :layout => {:expand => :width, :start => true, :align => :center})
 
@@ -83,7 +83,7 @@ class Application
                                                          repeats: true
 
         # end
-        ITUNES.run
+        ITUNES.run unless ITUNES.running?
         run
         win.will_close { exit }
       end
@@ -91,8 +91,8 @@ class Application
   end
 
   def run
-    debug "RUUUUUUUUN"
-    load_song_details
+    debug "WINNNNINNNGG!"
+    load_song_details if playing?
   end
 
   def debug(obj)
@@ -113,24 +113,26 @@ class Application
   # TODO: Implement their pixel_tracking_url thing so they don't ban me.
   def fetch_lyrics
     @lyrics.text = ''
-    url = "http://api.musixmatch.com/ws/1.1/track.search?apikey=3bc1042fde1ac8c1979c400d6f921320&q_artist=#{clean_artist_name(true)}&q_track=#{clean_track_name(true)}&format=xml&page_size=1&f_has_lyrics=1"
+    url = "http://api.musixmatch.com/ws/1.1/track.search?apikey=3bc1042fde1ac8c1979c400d6f921320&q_artist=#{clean_artist_name(true)}&q_track=#{clean_track_name(true)}&format=json&page_size=1&f_has_lyrics=1"
     puts url
     DataRequest.new.get(url) do |data|
-      hashed = XmlSimple.xml_in(data, 'ForceArray' => false)
-      if hashed['header']['status_code'].to_i == 200
-        track_id = hashed['body']['track_list']['track']['track_id']
+      hashed = JSON.parse(data)
+      if hashed['message']['header']['status_code'].to_i == 200 &&
+         hashed['message']['body']['track_list'][0]
+        track_id = hashed['message']['body']['track_list'][0]['track']['track_id']
 
-        lyrics_url = "http://api.musixmatch.com/ws/1.1/track.lyrics.get?track_id=#{track_id}&format=xml&apikey=3bc1042fde1ac8c1979c400d6f921320"
+        lyrics_url = "http://api.musixmatch.com/ws/1.1/track.lyrics.get?track_id=#{track_id}&format=json&apikey=3bc1042fde1ac8c1979c400d6f921320"
         puts lyrics_url
         DataRequest.new.get(lyrics_url) do |data|
-          hashed = XmlSimple.xml_in(data, 'ForceArray' => false)
-          @lyrics.text = hashed['body']['lyrics']['lyrics_body']
+          hashed = JSON.parse(data)
+          @lyrics.text = hashed['message']['body']['lyrics']['lyrics_body']
         end
 
       end
     end
   end
 
+  # XXX This is slow and for now has been replaced by fetch_artwork (Ruvi)
   def fetch_discog
     begin
       ac = AlbumCredits::Finder.new
@@ -165,8 +167,8 @@ class Application
   # I'm making 3 calls to Rovi because either their responses are formatted
   # weirdly or both JSON and XmlSimple flatten out collections in MacRuby..???
   def fetch_artwork
-
     @discog.text = ''
+
     @cover.file = File.expand_path(File.join(File.dirname(__FILE__), "..", "resources", "loading.gif"))
     # NOOP ATM - not saving imgs
     if already_have_cover?
@@ -175,27 +177,24 @@ class Application
       return
     end
 
-    artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
+    artwork_url = Rovi.album_lookup_url(current_track[:artist], clean_album_name)
 
     puts artwork_url
     DataRequest.new.get(artwork_url) do |data|
-      pp data
-      hashed = XmlSimple.xml_in(data)
-      album_id = hashed['results'][0]['data'][0]['id'][0]
-      credits_url = hashed['results'][0]['data'][0]['album'][0]['creditsUri'][0]
+      hashed = JSON.parse(data)
+      if hashed['searchResponse']['controlSet']['code'].to_i == 200
+        album_id = hashed['searchResponse']['results'][0]['id']
+        credits_url = Rovi.prepare_url(hashed['searchResponse']['results'][0]['album']['creditsUri'])
+        @cover.url = hashed['searchResponse']['results'][0]['album']['images'][0]['front']['Image']['url']
 
-      debug "Found albumid #{Rovi.image_lookup_url(album_id)}"
-      DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
-        hashed = XmlSimple.xml_in(data)
-        @cover.url = hashed['images'][0]['front'][0]['Image'].sort_by{ |img| img['height'][0].to_i }.reverse.first['url'][0]
-      end
-
-      DataRequest.new.get(credits_url) do |data|
-        hashed = XmlSimple.xml_in(data)
-        creds = hashed['credits'][0]['AlbumCredit'].inject([]) do |creds, c|
-          creds << "#{c['name'][0]} - #{c['credit'][0]}"
+        # puts credits_url
+        DataRequest.new.get(credits_url) do |data|
+          hashed = JSON.parse(data)
+          creds = hashed['credits'].inject([]) do |creds, c|
+            creds << "#{c['name']} - #{c['credit']}"
+          end
+          @discog.text = creds.join("\n")
         end
-        @discog.text = creds.join("\n")
       end
     end
   end
@@ -209,7 +208,7 @@ class Application
   end
 
   def clean_album_name(use_in_url=false)
-    clean_string current_track[:album].gsub(/(\sLP|EP\s*)$/,''), use_in_url
+    clean_string current_track[:album].gsub(/(\sLP|EP|CD\d*\s*)$/,''), use_in_url
   end
 
   def clean_string(string, use_in_url=false)
@@ -218,12 +217,16 @@ class Application
     if use_in_url
       URI.escape(cleaned)
     else
-      cleaned.gsub(/\s/, '_').downcase
+      cleaned
     end
   end
 
+  def playing?
+    ITUNES.running? && !current_track[:title].nil?
+  end
+
   def album_cache_dir
-    File.join(CACHE_DIR, clean_artist_name, clean_album_name)
+    File.join(CACHE_DIR, clean_artist_name.gsub(/\s/, '_').downcase, clean_album_name.gsub(/\s/, '_').downcase)
   end
 
   def create_album_dir
@@ -277,4 +280,4 @@ class Application
   end
 end
 
-Application.new.start
+LinerNotes.new.start

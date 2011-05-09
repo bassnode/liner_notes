@@ -17,3 +17,8 @@ require 'xmlsimple'
 require 'fileutils'
 require 'album_credits'
 
+class SBElementArray
+  def [](value)
+    self.objectWithName(value)
+  end
+end
