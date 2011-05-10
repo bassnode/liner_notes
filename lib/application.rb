@@ -6,6 +6,7 @@
 #
 require 'lib/liner_notes'
 
+DEFAULT_IMAGE = File.expand_path(File.join(File.dirname(__FILE__), "..", "resources", "loading.gif"))
 CACHE_DIR = NSHomeDirectory().stringByAppendingPathComponent(".liner_notes")
 ITUNES = SBApplication.applicationWithBundleIdentifier("com.apple.itunes")
 load_bridge_support_file File.expand_path(File.join(File.dirname(__FILE__), '..', 'ext', 'iTunes.bridgesupport'))
@@ -169,7 +170,7 @@ class LinerNotes
   def fetch_artwork
     @discog.text = ''
 
-    @cover.file = File.expand_path(File.join(File.dirname(__FILE__), "..", "resources", "loading.gif"))
+    @cover.file = DEFAULT_IMAGE
     # NOOP ATM - not saving imgs
     if already_have_cover?
       @cover.file = track_file_location(:cover)
@@ -177,17 +178,28 @@ class LinerNotes
       return
     end
 
-    artwork_url = Rovi.album_lookup_url(current_track[:artist], clean_album_name)
+    artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
 
     puts artwork_url
     DataRequest.new.get(artwork_url) do |data|
       hashed = JSON.parse(data)
-      if hashed['searchResponse']['controlSet']['code'].to_i == 200
+
+      # Hacky due to Ruvi API being inconsistent in it's responses
+      # http://developer.rovicorp.com/forum/read/116702
+      successful_response = (hashed['searchResponse']['controlSet']['code'].to_i == 200) rescue false
+      if !successful_response
+          @cover.url = DEFAULT_IMAGE
+          @discog.text = ''
+      else
         album_id = hashed['searchResponse']['results'][0]['id']
-        credits_url = Rovi.prepare_url(hashed['searchResponse']['results'][0]['album']['creditsUri'])
-        @cover.url = hashed['searchResponse']['results'][0]['album']['images'][0]['front']['Image']['url']
+        if hashed['searchResponse']['results'][0]['album']['images']
+          @cover.url = hashed['searchResponse']['results'][0]['album']['images'][0]['front']['Image']['url']
+        else
+          @cover.url = DEFAULT_IMAGE
+        end
 
         # puts credits_url
+        credits_url = Rovi.prepare_url(hashed['searchResponse']['results'][0]['album']['creditsUri'])
         DataRequest.new.get(credits_url) do |data|
           hashed = JSON.parse(data)
           creds = hashed['credits'].inject([]) do |creds, c|
