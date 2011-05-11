@@ -2,7 +2,8 @@
 #  * Need to do more pruning of song/album/title names before searching
 #    remote APIs or else you get shite results :/
 #  * Handle inconsistent network/remote services
-#  *
+#  * Dynamically change @window.title when track changes
+#  * Better UI :)
 #
 require 'lib/liner_notes'
 
@@ -45,28 +46,24 @@ class LinerNotes
   def start
     application :name => "Liner Notes" do |app|
       app.delegate = self
-      @window = window(:frame => [0, 0, 1000, 1000], :style => [:titled, :closable, :miniaturizable, :resizable], :title => "#{current_track[:artist]} - #{current_track[:title]}") do |win|
+
+      @window = window(:frame => [0, 0, 1000, 1000], :style => [:titled, :closable, :miniaturizable, :resizable], :title => "Liner Notes") do |win|
+
         win.contentView.margin  = 0
 
-        # @title_label = label  :text => "#{current_track[:artist]} - #{current_track[:title]}",
-                              # :font => font(:name => "Arial", :size => 22),
-                              # :text_align => :center,
-                              # :layout => {:start => false, :align => :center}
+        @cover = image_view(:frame => [0,0,1000,700])
 
         @discog = text_field :frame => [0,0,200,200],
                              :text => "DISCO",
                              :editable => false,
                              :layout => {:expand => :width, :start => true, :align => :center}
 
-          @lyrics = text_field( :frame => [0,0,200,200],
-                               :text => "lyricoh",
-                               # :font => font(:name => "Arial", :size => 10),
-                               :editable => false,
-                               :layout => {:expand => :width, :start => true, :align => :center})
+        @lyrics = text_field :frame => [0,0,200,200],
+                             :text => "lyricoh",
+                             # :font => font(:name => "Arial", :size => 10),
+                             :editable => false,
+                             :layout => {:expand => :width, :start => true, :align => :center}
 
-
-        @cover = image_view(:frame => [0,0,1000,700])
-        # win << @title_label
         win << @discog
         win << @lyrics
         win << @cover
@@ -108,6 +105,9 @@ class LinerNotes
     create_album_dir
     fetch_artwork
     fetch_lyrics
+
+   # debug "#{current_track[:artist]} - #{current_track[:title]}"
+    # main_window.title = "#{current_track[:artist]} - #{current_track[:title]}"
     # fetch_discog
   end
 
