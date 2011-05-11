@@ -36,11 +36,19 @@ class LinerNotes
     run if song_changed?
   end
 
+  # This seems dumb
   def song_changed?
-    ITUNES.playerPosition.to_i < 1
-    # if ITUNES.playerPosition.to_i < 1 && !@song_changed
-      # @song_changed = Time.now.to_i
-    # end
+    if @last_song
+      if @last_song == current_track[:title]
+        false
+      else
+        @last_song = current_track[:title]
+        true
+      end
+    else
+      @last_song = current_track[:title]
+      false
+    end
   end
 
   def start
@@ -50,6 +58,11 @@ class LinerNotes
       @window = window(:frame => [0, 0, 1000, 1000], :style => [:titled, :closable, :miniaturizable, :resizable], :title => "Liner Notes") do |win|
 
         win.contentView.margin  = 0
+        win.hasShadow = true
+        # Place the window @ the top of the screen, 10px from the left
+        win.frameOrigin = NSPoint.new(10,0)
+        # Float on top of everything else
+        # win.level = NSStatusWindowLevel
 
         @cover = image_view(:frame => [0,0,1000,700])
 
@@ -59,7 +72,6 @@ class LinerNotes
                              :layout => {:expand => :width, :start => true, :align => :center}
 
         @lyrics = text_field :frame => [0,0,200,200],
-                             :text => "lyricoh",
                              # :font => font(:name => "Arial", :size => 10),
                              :editable => false,
                              :layout => {:expand => :width, :start => true, :align => :center}
@@ -188,14 +200,11 @@ class LinerNotes
       # http://developer.rovicorp.com/forum/read/116702
       successful_response = (hashed['searchResponse']['controlSet']['code'].to_i == 200) rescue false
       if !successful_response
-          @cover.url = DEFAULT_IMAGE
           @discog.text = ''
       else
         album_id = hashed['searchResponse']['results'][0]['id']
         if hashed['searchResponse']['results'][0]['album']['images']
           @cover.url = hashed['searchResponse']['results'][0]['album']['images'][0]['front']['Image']['url']
-        else
-          @cover.url = DEFAULT_IMAGE
         end
 
         # puts credits_url
