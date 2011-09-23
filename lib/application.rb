@@ -64,7 +64,7 @@ class LinerNotes
         # Float on top of everything else
         # win.level = NSStatusWindowLevel
 
-        @cover = image_view(:frame => [0,0,1000,700])
+        @cover = image_view :frame => [0,0,1000,700]
 
         @discog = text_field :frame => [0,0,200,200],
                              :text => "DISCO",
@@ -117,13 +117,11 @@ class LinerNotes
     create_album_dir
     fetch_artwork
     fetch_lyrics
-
-   # debug "#{current_track[:artist]} - #{current_track[:title]}"
-    # main_window.title = "#{current_track[:artist]} - #{current_track[:title]}"
     # fetch_discog
   end
 
   # TODO: Implement their pixel_tracking_url thing so they don't ban me.
+  # TODO: Modularize the MusixMatch API calls
   def fetch_lyrics
     @lyrics.text = ''
     url = "http://api.musixmatch.com/ws/1.1/track.search?apikey=3bc1042fde1ac8c1979c400d6f921320&q_artist=#{clean_artist_name(true)}&q_track=#{clean_track_name(true)}&format=json&page_size=1&f_has_lyrics=1"
@@ -145,7 +143,7 @@ class LinerNotes
     end
   end
 
-  # XXX This is slow and for now has been replaced by fetch_artwork (Ruvi)
+  # XXX This is slow and for now has been replaced by fetch_artwork (Rovi)
   def fetch_discog
     begin
       ac = AlbumCredits::Finder.new
@@ -160,9 +158,6 @@ class LinerNotes
         debug "No release data"
       else
         release, engineers = sorted_releases.shift
-        # debug releases
-        # puts "-------------------------------------------"
-        # debug engineers
 
         str = ''#release.inspect
         str << engineers.map{|engineer| "#{engineer.role} #{engineer.name}"}.join("\n")
@@ -176,9 +171,9 @@ class LinerNotes
     end
   end
 
-  # This is ridiculous.
-  # I'm making 3 calls to Rovi because either their responses are formatted
+  # I'm making 2 calls to Rovi because either their responses are formatted
   # weirdly or both JSON and XmlSimple flatten out collections in MacRuby..???
+  # TODO: Refactor this abomination
   def fetch_artwork
     @discog.text = ''
 
@@ -190,21 +185,26 @@ class LinerNotes
       return
     end
 
-    artwork_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
+    album_lookup_url = Rovi.album_lookup_url(current_track[:artist], current_track[:album])
 
-    puts artwork_url
-    DataRequest.new.get(artwork_url) do |data|
+    DataRequest.new.get(album_lookup_url) do |data|
       hashed = JSON.parse(data)
 
       # Hacky due to Ruvi API being inconsistent in it's responses
       # http://developer.rovicorp.com/forum/read/116702
       successful_response = (hashed['searchResponse']['controlSet']['code'].to_i == 200) rescue false
       if !successful_response
-          @discog.text = ''
+        @discog.text = ''
       else
         album_id = hashed['searchResponse']['results'][0]['id']
-        if hashed['searchResponse']['results'][0]['album']['images']
-          @cover.url = hashed['searchResponse']['results'][0]['album']['images'][0]['front']['Image']['url']
+
+        DataRequest.new.get(Rovi.image_lookup_url(album_id)) do |data|
+          hashed = JSON.parse(data)
+
+          if (hashed['code'].to_i == 200) && hashed['images']['front']
+            images = hashed['images']['front'].sort_by{ |cover| cover['width'].to_i }
+            @cover.url = images.last['url']
+          end
         end
 
         # puts credits_url
