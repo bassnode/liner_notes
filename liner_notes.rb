@@ -161,7 +161,7 @@ class LinerNotes < Processing::App
       end
 
       if @individual_credits
-        f = @individual_credits.keys[3]
+        f = @individual_credits.keys[0]
         artist = @individual_credits[f]
         l = Line.new(Y_SPLIT)
         credits_by_role = artist.credits.group_by{ |c| c['credit'] }
