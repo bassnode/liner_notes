@@ -4,8 +4,8 @@ require 'json'
 
 class Rovi
   include Cache
-  import 'java.util.concurrent.Executors'
-  import 'java.util.concurrent.TimeUnit'
+  import java.util.concurrent.Executors
+  import java.util.concurrent.TimeUnit
 
   URL = "http://api.rovicorp.com"
   VERSION = 'v1'
@@ -52,7 +52,51 @@ class Rovi
     end
   end
 
+  # @param [String] URL resource/API endpoint
+  # @param [Hash] URL parameters
+  # @param [Array] cache keys
+  # @return [Hash, NilClass] the parsed JSON or nil if nothing/error
+  def get(resource, params, *cache_keys)
+    throttle!
+
+    all_opts    = params.merge(default_opts)
+    opts_string = parameterize_hash(all_opts)
+    json        = load_json("#{URL}/#{resource}?#{opts_string}", *cache_keys)
+    Rovi.last_request = Time.now
+
+    # Hacky due to Rovi API being inconsistent in its responses
+    # http://developer.rovicorp.com/forum/read/116702
+    successful = false
+    begin
+      if json['searchResponse']['controlSet']['code'].to_i == 200 &&
+        json['searchResponse']['totalResultCounts'].to_i > 0
+        successful = true
+      end
+    rescue
+      # Other API response type
+      successful = true if json && json['code'].to_i == 200
+    end
+
+    successful ? json : nil
+  end
+
+  # Rovi only allows 5 requests/sec. so ensure API
+  # requests are thottled.
+  def throttle!
+    next_request = 1.0 / Rovi::REQUEST_PER_SECOND
+
+    @mutex.synchronize do
+      time_since_last = Time.now.to_f - Rovi.last_request.to_f
+      if Rovi.last_request && time_since_last < next_request
+        puts "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
+        sleep threshold
+      end
+    end
+
+  end
+
   # The distance between 2 strings.
+  # Thanks jRuby.
   #
   # @param [String]
   # @param [String]
@@ -91,46 +135,6 @@ class Rovi
     d[m-1][n-1]
   end
 
-  def throttle!
-    next_request = 1.0 / Rovi::REQUEST_PER_SECOND
-
-    @mutex.synchronize do
-      time_since_last = Time.now.to_f - Rovi.last_request.to_f
-      if Rovi.last_request && time_since_last < next_request
-        puts "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
-        sleep threshold
-      end
-    end
-
-  end
-
-  # @param [String] URL resource/API endpoint
-  # @param [Hash] URL parameters
-  # @param [Array] cache keys
-  # @return [Hash, NilClass] the parsed JSON or nil if nothing/error
-  def get(resource, params, *cache_keys)
-    throttle!
-
-    all_opts    = params.merge(default_opts)
-    opts_string = parameterize_hash(all_opts)
-    json        = load_json("#{URL}/#{resource}?#{opts_string}", *cache_keys)
-    Rovi.last_request = Time.now
-
-    # Hacky due to Rovi API being inconsistent in its responses
-    # http://developer.rovicorp.com/forum/read/116702
-    successful = false
-    begin
-      if json['searchResponse']['controlSet']['code'].to_i == 200 &&
-        json['searchResponse']['totalResultCounts'].to_i > 0
-        successful = true
-      end
-    rescue
-      # Other API response type
-      successful = true if json && json['code'].to_i == 200
-    end
-
-    successful ? json : nil
-  end
 end
 
 
