@@ -86,10 +86,9 @@ class Rovi
     next_request = 1.0 / REQUESTS_PER_SECOND
 
     @mutex.synchronize do
-      time_since_last = Time.now.to_f - Rovi.last_request.to_f
-      if Rovi.last_request && time_since_last < next_request
+      if Rovi.last_request && Time.now.to_f - Rovi.last_request.to_f < next_request
         puts "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
-        sleep threshold
+        sleep next_request
       end
     end
 

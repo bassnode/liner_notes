@@ -160,7 +160,7 @@ class LinerNotes < Processing::App
         text(credit, 5, l.next!)
       end
 
-      if @individual_credits
+      if @individual_credits && @individual_credits.any?
         f = @individual_credits.keys[0]
         artist = @individual_credits[f]
         l = Line.new(Y_SPLIT)
