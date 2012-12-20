@@ -22,6 +22,13 @@ module Cache
     key =~ /\w+\.\w+/
   end
 
+  def cached?(*keys)
+    key = cache_key(*keys)
+    local_cache = File.join(CACHE_DIR, key)
+
+    File.exist?(local_cache)
+  end
+
   # @param [Array<String>] the splatted array to use as cache keys
   # @return [NilClass, String] either the cached item, i.e.
   #                            file path to the resource (image) data (JSON)
@@ -30,7 +37,7 @@ module Cache
     key = cache_key(*keys)
     local_cache = File.join(CACHE_DIR, key)
 
-    if File.exist?(local_cache)
+    if cached?(*keys)
       puts "Cache hit for #{key}"
       if image_key? key
         # image file
