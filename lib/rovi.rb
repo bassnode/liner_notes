@@ -37,10 +37,12 @@ class Rovi
   end
 
   def load_json(uri, *cache_keys)
+
     begin
       if cached = fetch_cached(*cache_keys)
         json = cached
       else
+        throttle!
         puts uri
         json = open(uri).read
         cache! json, *cache_keys
@@ -57,12 +59,10 @@ class Rovi
   # @param [Array] cache keys
   # @return [Hash, NilClass] the parsed JSON or nil if nothing/error
   def get(resource, params, *cache_keys)
-    throttle!
-
     all_opts    = params.merge(default_opts)
     opts_string = parameterize_hash(all_opts)
     json        = load_json("#{URL}/#{resource}?#{opts_string}", *cache_keys)
-    Rovi.last_request = Time.now
+    update_last_request
 
     # Hacky due to Rovi API being inconsistent in its responses
     # http://developer.rovicorp.com/forum/read/116702
@@ -88,10 +88,14 @@ class Rovi
     @mutex.synchronize do
       if Rovi.last_request && Time.now.to_f - Rovi.last_request.to_f < next_request
         puts "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
-        sleep next_request
+        sleep 0.5
       end
     end
 
+  end
+
+  def update_last_request
+    @mutex.synchronize { Rovi.last_request = Time.now }
   end
 
   # The distance between 2 strings.
@@ -189,7 +193,7 @@ class Album < Rovi
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
   def credit_objects
     if album['credits']
-      thread_pool = Executors.newFixedThreadPool(5)
+      thread_pool = Executors.newFixedThreadPool(3)
       results = {}
 
       album['credits'].each do |credit|
@@ -239,7 +243,7 @@ class Album < Rovi
   def image
     if album['images'] && album['images'].length > 0 && album['images'][0]['front']
       images = album['images'][0]['front'].sort_by{ |cover| cover['width'].to_i }
-      image = images[-2,1][0]['url'].split('?').first
+      image = images.last['url'].split('?').first
 
       return fetch_cached(image) || download_and_cache(image)
     end
