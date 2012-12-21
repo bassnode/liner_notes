@@ -7,6 +7,7 @@ require 'lib/rovi'
 require 'lib/resolver_factory'
 require 'lib/echonest'
 require 'lib/musix_match'
+require 'lib/paginator'
 require 'ap'
 require 'lib/profiler'
 
@@ -17,31 +18,29 @@ require 'lib/profiler'
 Thread.abort_on_exception = true
 
 class LinerNotes < Processing::App
-  # XXX This requires Processing 2 (or at least a newer version than is included
-  # in ruby-processing by default).  Custom gem, or pull request?
-  #load_library 'controlP5'
-  #import 'controlP5'
   import 'java.util.concurrent.Executors'
   include Cache
 
-  X_SPLIT = 500
-  X_MARGIN = 5
-  Y_SPLIT = 500
-  # how many lines of text can fit in a quadrant?
-  LINES_PER_PANEL = 25
+  X_SPLIT = 600
+  X_MARGIN = 20
+  Y_SPLIT = 300
+  LINES_PER_PAGE = 25
 
   attr_accessor :resolver
 
   def setup
-    frame_rate 10
-    size 1000, 900
+    size 1200, 600
+
+    load_pixels
 
     # could be a newCachedThreadPool too if saves ram
     @thread_pool = Executors.newFixedThreadPool(5)
 
+    text_align LEFT, CENTER
     @font = load_font "SansSerif-16.vlw"
+    @big_font = load_font "Serif-32.vlw"
     #@font = create_font "monaco", 14
-    text_font @font, 12
+    text_font @font, 14
 
     Rovi.shared_secret = "7Qbqyxz8TT"
     Rovi.api_key = "cc94xnqu4u5hwfqrdeq4umte"
@@ -50,23 +49,6 @@ class LinerNotes < Processing::App
     @echonest    = Echonest.new
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)
-
-    #@cp = ControlP5.new(self)
-    #@lyric_area = @cp.addTextarea("lyrics").
-                      #setPosition(x, 25).
-                      #setSize(X_SPLIT-X_MARGIN, 450).
-                      #setLineHeight(14).
-                      #setColor(color(255)).
-                      #setFont(@font)
-                      ##setColorBackground(color(255, 128)).
-                      ##setColorForeground(color(255, 100,0))
-
-    #@credits_area = @cp.addTextarea("credits").
-                      #setPosition(X_SPLIT-X_MARGIN, Y_SPLIT).
-                      #setSize(500, 325).
-                      #setLineHeight(14).
-                      #setColor(color(255)).
-                      #setFont(@font)
 
     update_track(true)
   end
@@ -80,7 +62,7 @@ class LinerNotes < Processing::App
     update_track
   end
 
-  def x(coord=X_SPLIT)
+  def x(coord=0)
     coord + X_MARGIN
   end
 
@@ -89,10 +71,11 @@ class LinerNotes < Processing::App
 
     fetch_album_details if force or song_changed?
 
-    draw_credits
     draw_artwork
+    draw_contributors
+    draw_credits
+    #draw_lyrics
     draw_track_info
-    draw_lyrics
     draw_footer
   end
 
@@ -108,16 +91,16 @@ class LinerNotes < Processing::App
   def draw_footer
     pos = current_position
 
-    line 0, height-70, width, height-70
-    text "#{@song[:artist]} - #{@song[:album]}", 5, height-50
-    text "#{pos[:track_location]}/#{pos[:track_duration]}", width-120, height-50
+    line 0, height-30, width, height-30
+    text "#{@song[:artist]} - #{@song[:album]}", 5, height-15
+    text "#{pos[:track_location]}/#{pos[:track_duration]}", width-120, height-15
   end
 
   def draw_lyrics
     return unless @lyrics
 
     @displayed_lyrics ||= @lyrics.next
-    text(@displayed_lyrics.join, x, 40)
+    text(@displayed_lyrics.join, X_SPLIT, Y_SPLIT)
 
     if frame_count > 1 && frame_count % 60 == 1
       begin
@@ -137,49 +120,97 @@ class LinerNotes < Processing::App
       heading += " by " + @track_credits.first(3).join(', ')
     end
 
-    text(heading, x, 16)
-    line(X_SPLIT, 24, width, 24)
+    text(heading, 10, 16)
+    #line(0, 24, width, 24)
   end
 
   def draw_artwork
     if @artwork
-      tint(255, 255)
-      image(@artwork, 0, 0, 500, 500)
+      tint(@tint_color || 255, 200) # rgb, alpha
+      image(@artwork, 0, 0, width/2, height)
+      @tint_color = get(width/2, height/2)
+      #@tint_color = get(random(0,X_SPLIT), random(0,Y_SPLIT))
     end
 
     if @extra_artwork
-      tint(255, 100)
-      image(@extra_artwork, X_SPLIT, 0, 500, 500)
+      image(@extra_artwork, X_SPLIT, 0, width/2, height)
     end
   end
 
-  def draw_credits
-    if @album_credits
-      l = Line.new(Y_SPLIT)
-      @album_credits.each_with_index do |credit, idx|
-        text(credit, 5, l.next!)
-      end
+  def draw_contributors
+    return unless @individual_credits && @individual_credits.any?
 
-      if @individual_credits && @individual_credits.any?
-        f = @individual_credits.keys[0]
-        artist = @individual_credits[f]
-        l = Line.new(Y_SPLIT)
-        credits_by_role = artist.credits.group_by{ |c| c['credit'] }
-
-        text(artist.name, x, l.next!)
-        credits_by_role.each do |role, credits|
-          text(role, x, l.next!)
-
-          credits.sort_by{ |c| c['year'].to_i }.reverse.each do |credit|
-            artist = credit['primaryartists'].first['name']
-            # Handle blank artists
-            artist = artist.empty? ? "" : "#{artist} - "
-            str = "\t\t#{artist}#{credit['title']} [#{credit['year']}]"
-            text(str, x, l.next!)
-          end
-        end
-      end
+    l = Line.new(20)
+    @individual_credits.keys.sort.take(LINES_PER_PAGE).each do |contrib|
+      text(contrib, 10, l.next!)
     end
+  end
+
+  # TODO Refactor and encapsulate pagination in a class/lib
+  def draw_credits
+    return unless @individual_credits && @individual_credits.any?
+
+    # TODO: User-selected artist
+    f = @individual_credits.keys.sort.first
+    artist = @individual_credits[f]
+
+    # Sort the credits by role and year
+    credits = artist.credits.map { |c| ["#{c['credit']}_#{c['year']}", c] }
+    credits = credits.sort{ |x,y| x[0] <=> y[0] }.reverse
+
+    @page ||= 0
+    pages = (credits.size / LINES_PER_PAGE.to_f).ceil
+
+    if frame_count > 1 && frame_count % 30 == 1
+      @page += 1
+    elsif @page == pages
+      puts "STARTING PAGES OVER"
+      @page = 0
+    end
+
+    offset = @page * LINES_PER_PAGE
+
+    text_size 32
+    text(artist.name, x(X_SPLIT), 20)
+    text_size 14
+    l = Line.new(32)
+
+    row_count = 0
+    page = credits[offset, credits.size]
+    while page and page.size > 0 and row_count < LINES_PER_PAGE do
+      credit = page.shift.last
+      performer = credit['primaryartists'].first['name']
+      role = credit['credit']
+      role_line = nil
+
+      # Don't draw this until later so as not to
+      # go over the LINES_PER_PAGE limit.
+      if @role.nil? or @role.downcase != role.downcase
+        row_count += 1
+        @role = role
+        role_line = lambda { text(role, x(X_SPLIT), l.next!) }
+      end
+
+      break if row_count >= LINES_PER_PAGE
+
+      # Handle blank performers
+      performer = performer.empty? ? "" : "#{performer} - "
+      str = "\t\t#{performer}#{credit['title']} [#{credit['year']}]"
+      role_line.call if role_line
+      text(str, x(X_SPLIT), l.next!)
+      row_count += 1
+    end
+
+    paginator = Paginator.new
+    paginator.draw_links
+  end
+
+  def mouse_pressed
+    #return unless mouse_y >= y_of_pagination
+    # do something if clicked < or >
+    puts mouse_x
+    puts mouse_y
+    puts "*"*20
   end
 
   # @return [Hash]
@@ -247,8 +278,6 @@ class LinerNotes < Processing::App
     @extra_artwork = nil
     @lyrics = nil
     @displayed_lyrics = nil
-    #@lyric_area.setText('')
-    #@credits_area.setText('')
   end
 
   def formatted_track_location(pos)
