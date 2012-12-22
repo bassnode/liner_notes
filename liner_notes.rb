@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'ruby-processing'
+require 'lib/ext/string'
 require 'lib/line'
 require 'lib/cache'
 require 'lib/itunes'
@@ -115,7 +116,7 @@ class LinerNotes < Processing::App
 
   # Draws track name with credits
   def draw_track_info
-    heading = %Q{"#{@song[:title]}"}
+    heading = @song[:title].titleize
     if @track_credits
       heading += " by " + @track_credits.first(3).join(', ')
     end
@@ -126,13 +127,16 @@ class LinerNotes < Processing::App
 
   def draw_artwork
     if @artwork
-      tint(@tint_color || 255, 200) # rgb, alpha
+      tint(255, 128)
       image(@artwork, 0, 0, width/2, height)
       @tint_color = get(width/2, height/2)
+      # Don't black out the photo
+      @tint_color = 100 if @tint_color <= -16777216
       #@tint_color = get(random(0,X_SPLIT), random(0,Y_SPLIT))
     end
 
     if @extra_artwork
+      tint(@tint_color || 255, 128) # rgb, alpha
       image(@extra_artwork, X_SPLIT, 0, width/2, height)
     end
   end
@@ -154,54 +158,28 @@ class LinerNotes < Processing::App
     f = @individual_credits.keys.sort.first
     artist = @individual_credits[f]
 
-    # Sort the credits by role and year
-    credits = artist.credits.map { |c| ["#{c['credit']}_#{c['year']}", c] }
-    credits = credits.sort{ |x,y| x[0] <=> y[0] }.reverse
-
-    @page ||= 0
-    pages = (credits.size / LINES_PER_PAGE.to_f).ceil
-
-    if frame_count > 1 && frame_count % 30 == 1
-      @page += 1
-    elsif @page == pages
-      puts "STARTING PAGES OVER"
-      @page = 0
-    end
-
-    offset = @page * LINES_PER_PAGE
-
     text_size 32
     text(artist.name, x(X_SPLIT), 20)
     text_size 14
     l = Line.new(32)
 
-    row_count = 0
-    page = credits[offset, credits.size]
-    while page and page.size > 0 and row_count < LINES_PER_PAGE do
-      credit = page.shift.last
-      performer = credit['primaryartists'].first['name']
-      role = credit['credit']
-      role_line = nil
+    paginator = Paginator.new(artist.formatted_credits,
+                                :page => @page,
+                                :per_page => LINES_PER_PAGE)
 
-      # Don't draw this until later so as not to
-      # go over the LINES_PER_PAGE limit.
-      if @role.nil? or @role.downcase != role.downcase
-        row_count += 1
-        @role = role
-        role_line = lambda { text(role, x(X_SPLIT), l.next!) }
+    paginator.page.each do |credit|
+      if credit.is_a? String
+        str = credit
+      else
+        performer = credit['primaryartists'].first['name']
+        # Handle blank performers
+        performer = performer.empty? ? "" : "#{performer} - "
+        str = "\t\t#{performer}#{credit['title']} [#{credit['year']}]"
       end
 
-      break if row_count >= LINES_PER_PAGE
-
-      # Handle blank performers
-      performer = performer.empty? ? "" : "#{performer} - "
-      str = "\t\t#{performer}#{credit['title']} [#{credit['year']}]"
-      role_line.call if role_line
       text(str, x(X_SPLIT), l.next!)
-      row_count += 1
     end
 
-    paginator = Paginator.new
     paginator.draw_links
   end
 

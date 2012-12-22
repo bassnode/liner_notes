@@ -158,6 +158,31 @@ class MusicCredits < Rovi
       @credits = result['credits']
     end
   end
+
+  # Add the credit role as a member of the returned array
+  # for easier display.
+  # Als sort by role and year
+  #
+  # @return [Array<Hash>] the credits
+  def formatted_credits
+    formatted = credits.map do |c|
+      ["#{c['credit']}_#{c['year']}", c]
+    end
+
+    formatted.sort!{ |x,y| x[0] <=> y[0] }.reverse!
+
+    role = nil
+    formatted.map(&:last).inject([]) do |arr, c|
+      curr_role = c['credit']
+      if role.nil? or curr_role.downcase != role.downcase
+        role = curr_role
+        arr << curr_role
+      end
+
+      arr << c
+    end
+  end
+
 end
 
 class Album < Rovi
