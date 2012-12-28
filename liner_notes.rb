@@ -9,10 +9,8 @@ require 'lib/echonest'
 require 'lib/musix_match'
 require 'lib/paginator'
 require 'ap'
-require 'lib/profiler'
-
-# TODO: How do I remove artwork when the newly-playing
-# song doesn't have any, but the previous one did?
+# uncomment and install ruby-debug if needed
+# require 'lib/profiler'
 
 # At least while developing
 Thread.abort_on_exception = true

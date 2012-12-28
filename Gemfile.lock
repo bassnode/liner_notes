@@ -1,0 +1,14 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    awesome_print (1.1.0)
+    json (1.7.5-java)
+    ruby-processing (1.0.11)
+
+PLATFORMS
+  java
+
+DEPENDENCIES
+  awesome_print
+  json
+  ruby-processing

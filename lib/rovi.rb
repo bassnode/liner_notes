@@ -1,3 +1,4 @@
+require 'thread'
 require 'digest/md5'
 require 'open-uri'
 require 'json'
