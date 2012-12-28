@@ -25,7 +25,6 @@ class LinerNotes < Processing::App
   X_SPLIT = 600
   X_MARGIN = 20
   Y_SPLIT = 300
-  LINES_PER_PAGE = 25
 
   attr_accessor :resolver
 
@@ -93,7 +92,7 @@ class LinerNotes < Processing::App
     pos = current_position
 
     line 0, height-30, width, height-30
-    text "#{@song[:artist]} - #{@song[:album]}", 5, height-15
+    text "#{@song[:artist].titleize} - #{@song[:album].titleize}", 5, height-15
     text "#{pos[:track_location]}/#{pos[:track_duration]}", width-120, height-15
   end
 
@@ -122,7 +121,6 @@ class LinerNotes < Processing::App
     end
 
     text(heading, 10, 16)
-    #line(0, 24, width, 24)
   end
 
   def draw_artwork
@@ -142,15 +140,20 @@ class LinerNotes < Processing::App
   end
 
   def draw_contributors
-    return unless @individual_credits && @individual_credits.any?
+    return unless @album_credits
+
+    paginator = Paginator.new(@album_credits, :page => @contrib_page)
 
     l = Line.new(20)
-    @individual_credits.keys.sort.take(LINES_PER_PAGE).each do |contrib|
-      text(contrib, 10, l.next!)
+    paginator.page.each do |contrib|
+      text(contrib.first, 10, l.next!)
+      text(contrib.last, 200, l.curr)
     end
+
+    paginator.draw_links(X_SPLIT - 75, height-50)
   end
 
-  # TODO Refactor and encapsulate pagination in a class/lib
+  # TODO Encapsulate credits in a class
   def draw_credits
     return unless @individual_credits && @individual_credits.any?
 
@@ -163,9 +166,7 @@ class LinerNotes < Processing::App
     text_size 14
     l = Line.new(32)
 
-    paginator = Paginator.new(artist.formatted_credits,
-                                :page => @page,
-                                :per_page => LINES_PER_PAGE)
+    paginator = Paginator.new(artist.formatted_credits, :page => @credit_page)
 
     paginator.page.each do |credit|
       if credit.is_a? String
@@ -180,7 +181,7 @@ class LinerNotes < Processing::App
       text(str, x(X_SPLIT), l.next!)
     end
 
-    paginator.draw_links
+    paginator.draw_links(width - 70, height-50)
   end
 
   def mouse_pressed

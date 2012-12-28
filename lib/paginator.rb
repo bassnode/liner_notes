@@ -10,7 +10,7 @@ class Paginator
     @per_page     = opts.fetch(:per_page, 25)
     @items        = items
     @num_items    = items.size
-    @nun_pages    = (num_items / per_page.to_f).ceil
+    @num_pages    = (num_items / per_page.to_f).ceil
     @offset       = current_page * per_page
   end
 
@@ -18,8 +18,12 @@ class Paginator
     items[@offset, per_page]
   end
 
-  def draw_links
-    text('<', width - 50, height-50)
-    text('>', width - 30, height-50)
+  def draw_links(x, y)
+    return if num_pages >= 1
+
+    txt = "#{current_page+1}/#{num_pages}"
+    text('<', x, y)
+    text(txt, x + 16, y)
+    text('>', x + text_width(txt) + 20, y)
   end
 end

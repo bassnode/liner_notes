@@ -208,11 +208,28 @@ class Album < Rovi
     end
   end
 
+  # Attempts to logically group the album's contributors by
+  # type of contributions.
+  # TODO: Make smarter.
+  #
   # @return [Array<String>, NilClass] in format "Name - Contribution"
   def credits
-    album['credits'].map do |c|
-      "#{c['name']} - #{c['credit']}"
-    end if album['credits']
+    return unless album['credits']
+
+    groups = [
+      /guitar|drums|vocals|bass/i,
+      /engineer|producer|mixing|mastering|tracking/i
+    ]
+
+    creds = album['credits'].map do |c|
+      [c['name'], c['credit']]
+    end.uniq
+
+    grouped = creds.group_by do |artist, credit|
+      groups.detect{ |regex| regex.match credit }
+    end.values
+
+    grouped[1].to_a + grouped[2].to_a + grouped[0]
   end
 
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
