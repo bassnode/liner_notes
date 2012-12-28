@@ -5,7 +5,6 @@ require 'lib/line'
 require 'lib/cache'
 require 'lib/itunes'
 require 'lib/rovi'
-require 'lib/resolver_factory'
 require 'lib/echonest'
 require 'lib/musix_match'
 require 'lib/paginator'
@@ -26,8 +25,6 @@ class LinerNotes < Processing::App
   X_MARGIN = 20
   Y_SPLIT = 300
 
-  attr_accessor :resolver
-
   def setup
     size 1200, 600
 
@@ -45,7 +42,6 @@ class LinerNotes < Processing::App
     Rovi.shared_secret = "7Qbqyxz8TT"
     Rovi.api_key = "cc94xnqu4u5hwfqrdeq4umte"
 
-    @resolver    = Rovi.new
     @echonest    = Echonest.new
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)
