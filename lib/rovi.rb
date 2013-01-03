@@ -135,7 +135,7 @@ class Rovi
       end
     end
 
-    puts "#{s} vs #{t} Score: #{d[m-1][n-1]}"
+    puts %Q{"#{s}" vs "#{t}" Score: #{d[m-1][n-1]}}
     d[m-1][n-1]
   end
 
@@ -205,7 +205,9 @@ class Album < Rovi
                :entitytype => 'album' }
 
     if json = get("search/#{SEARCH_VERSION}/music/search", params, original_artist, original_album)
-      @album = best_result(json['searchResponse']['results'])
+      if matching_album = best_result(json['searchResponse']['results'])
+        @album = matching_album
+      end
     end
   end
 
@@ -303,7 +305,7 @@ class Album < Rovi
 
   # @param [Hash] the results from a Rovi API search
   # @return [Hash] the result which most closely matches the
-  #                original_album name.
+  #                original_album and original_artist name.
   def best_result(results)
     scores = []
     results.each do |result|
@@ -312,7 +314,14 @@ class Album < Rovi
       break if score == 0 # THE BEST!
     end
 
-    scores.sort_by(&:last).first.first
+    best = scores.sort_by(&:last).first.first
+
+    # Check artist
+    artist_scores = best['primaryArtists'].map do |artist|
+      levenshtein(original_artist, artist['name'])
+    end
+
+    artist_scores.min < 10 ? best : nil
   end
 
 end
