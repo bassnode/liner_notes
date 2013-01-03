@@ -2,7 +2,12 @@ GEM
   remote: https://rubygems.org/
   specs:
     awesome_print (1.1.0)
+    columnize (0.3.6)
     json (1.7.5-java)
+    ruby-debug (0.10.4)
+      columnize (>= 0.1)
+      ruby-debug-base (~> 0.10.4.0)
+    ruby-debug-base (0.10.4-java)
     ruby-processing (1.0.11)
 
 PLATFORMS
@@ -11,4 +16,5 @@ PLATFORMS
 DEPENDENCIES
   awesome_print
   json
+  ruby-debug
   ruby-processing
