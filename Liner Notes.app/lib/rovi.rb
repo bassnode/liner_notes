@@ -1,3 +1,4 @@
+require 'thread'
 require 'digest/md5'
 require 'open-uri'
 require 'json'
@@ -134,7 +135,7 @@ class Rovi
       end
     end
 
-    puts "#{s} vs #{t} Score: #{d[m-1][n-1]}"
+    puts %Q{"#{s}" vs "#{t}" Score: #{d[m-1][n-1]}}
     d[m-1][n-1]
   end
 
@@ -163,24 +164,51 @@ class MusicCredits < Rovi
   # for easier display.
   # Als sort by role and year
   #
-  # @return [Array<Hash>] the credits
-  def formatted_credits
+  # @param [String,NilClass] the credit to favor/place at beginning
+  # @return [Array<Hash,String>] the credits
+  def formatted_credits(preferred_role=nil)
+    # They can come comma-separated, so take the first
+    # value if possible.
+    preferred_role = preferred_role.split(',').first.strip unless preferred_role.nil?
+
+    # Sort credits by role for formatting.
     formatted = credits.map do |c|
       ["#{c['credit']}_#{c['year']}", c]
     end
-
     formatted.sort!{ |x,y| x[0] <=> y[0] }.reverse!
 
+    # If there is a preferred_role, then stick all
+    # of those values (up till the role changes) in a
+    # separate array which will later be placed at the
+    # front of the returned dataset.
     role = nil
-    formatted.map(&:last).inject([]) do |arr, c|
+    preferred = false
+    preferred_array = []
+
+    credits = formatted.map(&:last).inject([]) do |arr, c|
       curr_role = c['credit']
+      # When it changes, insert the role title as a marker.
       if role.nil? or curr_role.downcase != role.downcase
         role = curr_role
-        arr << curr_role
+        preferred = !preferred_role.nil? && role =~ /#{preferred_role}/i ? true : false
+
+        if preferred
+          preferred_array << curr_role
+        else
+          arr << curr_role
+        end
       end
 
-      arr << c
+      if preferred
+        preferred_array << c
+      else
+        arr << c
+      end
+
+      arr
     end
+
+    preferred_array + credits
   end
 
 end
@@ -204,7 +232,9 @@ class Album < Rovi
                :entitytype => 'album' }
 
     if json = get("search/#{SEARCH_VERSION}/music/search", params, original_artist, original_album)
-      @album = best_result(json['searchResponse']['results'])
+      if matching_album = best_result(json['searchResponse']['results'])
+        @album = matching_album
+      end
     end
   end
 
@@ -217,7 +247,7 @@ class Album < Rovi
     return unless album['credits']
 
     groups = [
-      /guitar|drums|vocals|bass/i,
+      /guitar|drums|vocals|bass|composer|primary artist/i,
       /engineer|producer|mixing|mastering|tracking/i
     ]
 
@@ -229,7 +259,7 @@ class Album < Rovi
       groups.detect{ |regex| regex.match credit }
     end.values
 
-    grouped[1].to_a + grouped[2].to_a + grouped[0]
+    grouped[0].to_a + grouped[1].to_a + grouped[2].to_a
   end
 
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
@@ -301,8 +331,8 @@ class Album < Rovi
   private
 
   # @param [Hash] the results from a Rovi API search
-  # @return [Hash] the result which most closely matches the
-  #                original_album name.
+  # @return [Hash,NilClass] the album which most closely matches
+  #               the original_album and original_artist name.
   def best_result(results)
     scores = []
     results.each do |result|
@@ -311,7 +341,14 @@ class Album < Rovi
       break if score == 0 # THE BEST!
     end
 
-    scores.sort_by(&:last).first.first
+    best = scores.sort_by(&:last).first.first
+
+    # Check artist
+    artist_scores = best['primaryArtists'].map do |artist|
+      levenshtein(original_artist, artist['name'])
+    end
+
+    artist_scores.min < 10 ? best : nil
   end
 
 end

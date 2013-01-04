@@ -19,7 +19,7 @@ class Paginator
   end
 
   def draw_links(x, y)
-    return if num_pages >= 1
+    return unless num_pages > 1
 
     txt = "#{current_page+1}/#{num_pages}"
     text('<', x, y)

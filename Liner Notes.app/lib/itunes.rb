@@ -25,14 +25,15 @@ class ITunes
   end
 
   def get_track_metadata
-    "pantera, walk, vulgar display of power"
-    "rage against the machine, bombtrack, rage against the machine"
-    "the police, can't stand losing you, Outlandos d'Amour"
-    "metallica, anesthesia, kill 'em all"
-    "interpol,nyc,turn on the bright lights"
-    execute '(artist of current track) & "," & (name of current track) & "," & (album of current track)'
+    "pantera,walk,vulgar display of power"
     "tool,Forty Six & 2,aenima"
+    "the police,can't stand losing you,Outlandos d'Amour"
+    "metallica,anesthesia,kill 'em all"
+    "interpol,nyc,turn on the bright lights"
     "rolling stones, wild horses,sticky fingers"
+    "rage against the machine,bombtrack,rage against the machine"
+    "led zeppelin,kashmir,physical graffiti"
+    execute '(artist of current track) & "," & (name of current track) & "," & (album of current track)'
   end
 
   def get_track_playback_position
