@@ -9,7 +9,8 @@ require 'lib/echonest'
 require 'lib/musix_match'
 require 'lib/paginator'
 require 'ap'
-require 'lib/profiler'
+# Uncomment if needing debugger
+# require 'lib/profiler'
 
 # At least while developing
 Thread.abort_on_exception = true
