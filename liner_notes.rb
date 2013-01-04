@@ -67,7 +67,7 @@ class LinerNotes < Processing::App
     draw_artwork
     draw_contributors
     draw_credits
-    #draw_lyrics
+    draw_lyrics
     draw_track_info
     draw_footer
   end
@@ -102,8 +102,6 @@ class LinerNotes < Processing::App
         @lyrics.rewind
       end
     end
-
-    #@lyric_area.setText(@lyrics.gsub("\r", "")) if @lyrics
   end
 
   # Draws track name with credits
@@ -159,7 +157,13 @@ class LinerNotes < Processing::App
     text_size 14
     l = Line.new(32)
 
-    paginator = Paginator.new(artist.formatted_credits, :page => @credit_page)
+    if @album_credits and credit = @album_credits.detect{ |d| d[0] =~ /#{artist.name}/i }
+      album_credit = credit.last
+    else
+      album_credit = nil
+    end
+
+    paginator = Paginator.new(artist.formatted_credits(album_credit), :page => @credit_page)
 
     paginator.page.each do |credit|
       if credit.is_a? String
@@ -168,7 +172,8 @@ class LinerNotes < Processing::App
         performer = credit['primaryartists'].first['name']
         # Handle blank performers
         performer = performer.empty? ? "" : "#{performer} - "
-        str = "\t\t#{performer}#{credit['title']} [#{credit['year']}]"
+        year = credit['year'].empty? ? "" : "[#{credit['year']}]"
+        str = "\t\t#{performer}#{credit['title']} #{year}"
       end
 
       text(str, x(X_SPLIT), l.next!)
@@ -231,10 +236,10 @@ class LinerNotes < Processing::App
     end
 
     @thread_pool.submit do
-      if lyrics = @musix_match.lyrics(@song[:artist], @song[:title])
-        # Create an Enumerator that we'll step through later
-        @lyrics = lyrics.lines.each_slice(LINES_PER_PANEL)
-      end
+      #if lyrics = @musix_match.lyrics(@song[:artist], @song[:title])
+        ## Create an Enumerator that we'll step through later
+        #@lyrics = lyrics.lines.each_slice(LINES_PER_PANEL)
+      #end
     end
 
   end

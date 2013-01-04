@@ -25,13 +25,14 @@ class ITunes
   end
 
   def get_track_metadata
-    "pantera, walk, vulgar display of power"
+    "pantera,walk,vulgar display of power"
     "tool,Forty Six & 2,aenima"
-    "rage against the machine, bombtrack, rage against the machine"
-    "the police, can't stand losing you, Outlandos d'Amour"
-    "metallica, anesthesia, kill 'em all"
+    "the police,can't stand losing you,Outlandos d'Amour"
+    "metallica,anesthesia,kill 'em all"
     "interpol,nyc,turn on the bright lights"
     "rolling stones, wild horses,sticky fingers"
+    "rage against the machine,bombtrack,rage against the machine"
+    "led zeppelin,kashmir,physical graffiti"
     execute '(artist of current track) & "," & (name of current track) & "," & (album of current track)'
   end
 
