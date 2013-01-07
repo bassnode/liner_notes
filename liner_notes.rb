@@ -44,6 +44,8 @@ class LinerNotes < Processing::App
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)
 
+    @credits_paginator = Paginator.new
+    @contributors_paginator = Paginator.new
     update_track(true)
   end
 
@@ -134,15 +136,15 @@ class LinerNotes < Processing::App
   def draw_contributors
     return unless @album_credits
 
-    paginator = Paginator.new(@album_credits, :page => @contrib_page)
+    @contributors_paginator.set_content(@album_credits)
 
     l = Line.new(20)
-    paginator.page.each do |contrib|
+    @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       text(contrib.last, 200, l.curr)
     end
 
-    paginator.draw_links(X_SPLIT - 75, height-50)
+    @contributors_paginator.draw_links(X_SPLIT - 80, height-50)
   end
 
   # TODO Encapsulate credits in a class
@@ -164,9 +166,9 @@ class LinerNotes < Processing::App
       album_credit = nil
     end
 
-    paginator = Paginator.new(artist.formatted_credits(album_credit), :page => @credit_page)
+    @credits_paginator.set_content(artist.formatted_credits(album_credit))
 
-    paginator.page.each do |credit|
+    @credits_paginator.page.each do |credit|
       if credit.is_a? String
         str = credit
       else
@@ -180,15 +182,13 @@ class LinerNotes < Processing::App
       text(str, x(X_SPLIT), l.next!)
     end
 
-    paginator.draw_links(width - 70, height-50)
+    @credits_paginator.draw_links(width - 80, height-50)
   end
 
   def mouse_pressed
     #return unless mouse_y >= y_of_pagination
     # do something if clicked < or >
-    puts mouse_x
-    puts mouse_y
-    puts "*"*20
+    Paginator.click(mouse_x, mouse_y)
   end
 
   # @return [Hash]
