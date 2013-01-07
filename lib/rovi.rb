@@ -171,12 +171,6 @@ class MusicCredits < Rovi
     # value if possible.
     preferred_role = preferred_role.split(',').first.strip unless preferred_role.nil?
 
-    # Sort credits by role for formatting.
-    formatted = credits.map do |c|
-      ["#{c['credit']}_#{c['year']}", c]
-    end
-    formatted.sort!{ |x,y| x[0] <=> y[0] }.reverse!
-
     # If there is a preferred_role, then stick all
     # of those values (up till the role changes) in a
     # separate array which will later be placed at the
@@ -185,7 +179,7 @@ class MusicCredits < Rovi
     preferred = false
     preferred_array = []
 
-    credits = formatted.map(&:last).inject([]) do |arr, c|
+    credits = sorted_credits.map(&:last).inject([]) do |arr, c|
       curr_role = c['credit']
       # When it changes, insert the role title as a marker.
       if role.nil? or curr_role.downcase != role.downcase
@@ -211,6 +205,19 @@ class MusicCredits < Rovi
     preferred_array + credits
   end
 
+
+  private
+
+  # Sort credits by role & year.
+  #
+  # @return [<Array(String,Hash)>] the sort value and credit details
+  def sorted_credits
+    formatted = credits.map do |c|
+      ["#{c['credit']}_#{c['year']}", c]
+    end
+
+    formatted.sort{ |x,y| x[0] <=> y[0] }.reverse
+  end
 end
 
 class Album < Rovi
@@ -265,7 +272,6 @@ class Album < Rovi
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
   def credit_objects
     if album['credits']
-      thread_pool = Executors.newFixedThreadPool(3)
       results = {}
 
       album['credits'].each do |credit|
@@ -328,7 +334,12 @@ class Album < Rovi
       album['releases'].detect{ |a| a['isMain'] }
     end
   end
+
   private
+
+  def thread_pool
+    @thread_pool ||= Executors.newFixedThreadPool(3)
+  end
 
   # @param [Hash] the results from a Rovi API search
   # @return [Hash,NilClass] the album which most closely matches
