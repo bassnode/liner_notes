@@ -1,4 +1,5 @@
 class ITunes
+  class ITunesError < StandardError; end
 
   def initialize(start=false)
     if start && !open?
@@ -26,13 +27,13 @@ class ITunes
 
   def get_track_metadata
     "pantera,walk,vulgar display of power"
-    "tool,Forty Six & 2,aenima"
     "the police,can't stand losing you,Outlandos d'Amour"
     "metallica,anesthesia,kill 'em all"
-    "interpol,nyc,turn on the bright lights"
     "rolling stones, wild horses,sticky fingers"
-    "rage against the machine,bombtrack,rage against the machine"
     "led zeppelin,kashmir,physical graffiti"
+    "tool,Forty Six & 2,aenima"
+    "interpol,nyc,turn on the bright lights"
+    "rage against the machine,bombtrack,rage against the machine"
     execute '(artist of current track) & "," & (name of current track) & "," & (album of current track)'
   end
 
@@ -43,13 +44,25 @@ class ITunes
 
   private
 
-  # TODO: Look at being more defensive here, including starting
-  # iTunes if not running, surfacing actual system error message, etc.
   def execute(command)
-    result = %x[osascript -e 'tell application \"iTunes\" to #{command}']
+    result = nil
+    retries = 5
 
-    unless $?.success?
-      raise "Issue running iTunes command: #{command}.  Is iTunes open?"
+    begin
+      result = %x[osascript -e 'tell application \"iTunes\" to #{command}']
+
+      unless $?.success?
+        raise ITunesError.new("Issue running iTunes command: #{command}.  Is iTunes open?")
+      end
+
+    rescue ITunesError => e
+      if retries > 0
+        play!
+        retries -= 1
+        retry
+      else
+        raise
+      end
     end
 
     result
