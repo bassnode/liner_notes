@@ -10,7 +10,7 @@ require 'lib/musix_match'
 require 'lib/paginator'
 require 'ap'
 # Uncomment if needing debugger
-# require 'lib/profiler'
+ require 'lib/profiler'
 
 # At least while developing
 Thread.abort_on_exception = true
@@ -56,6 +56,7 @@ class LinerNotes < Processing::App
     smooth
 
     update_track
+    cursor Paginator.hovering?(mouse_x, mouse_y) ? HAND : ARROW
   end
 
   def x(coord=0)

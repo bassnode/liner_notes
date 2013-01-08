@@ -1,5 +1,6 @@
 class Paginator
 
+  CLICK_PAD = 10
   include Processing::Proxy
 
   # Keep a map of all the next/prev links so we can act
@@ -84,20 +85,32 @@ class Paginator
   #
   # @param [Fixnum] the x coordinate of the click
   # @param [Fixnum] the y coordinate of the click
-  def self.click(x,y)
-    keys = @@links.keys
-    pad = 10
-
-    clicked = keys.detect do |x_y|
-      xrange = x_y[0]-pad..x_y[0]+pad
-      yrange = x_y[1]-pad..x_y[1]+pad
-
-      xrange.include?(x) && yrange.include?(y)
-    end
-
-    if clicked
+  def self.click(mouse_x, mouse_y)
+    if clicked = hovered_link(mouse_x, mouse_y)
       direction, paginator = @@links[clicked]
       paginator.send(direction)
+    end
+  end
+
+  # @param [Fixnum] the x coordinate of the mouse
+  # @param [Fixnum] the y coordinate of the mouse
+  # @return [Boolean] whether the mouse is over a link
+  def self.hovering?(mouse_x, mouse_y)
+    !!hovered_link(mouse_x, mouse_y)
+  end
+
+  # @param [Fixnum] the x coordinate of the mouse
+  # @param [Fixnum] the y coordinate of the mouse
+  # @return [Array<Fixnum>] hash key for @@links
+  def self.hovered_link(mouse_x, mouse_y)
+    @@links.keys.detect do |x, y|
+      if mouse_x >= x-CLICK_PAD && mouse_x <= x+CLICK_PAD
+        if mouse_y >= y-CLICK_PAD && mouse_y <= y+CLICK_PAD
+          true
+        end
+      else
+        false
+      end
     end
   end
 end
