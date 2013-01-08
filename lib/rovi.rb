@@ -253,20 +253,21 @@ class Album < Rovi
   def credits
     return unless album['credits']
 
-    groups = [
-      /guitar|drums|vocals|bass|composer|primary artist/i,
-      /engineer|producer|mixing|mastering|tracking/i
-    ]
+    groups = {
+      :artistic => /guitar|drums|vocals|bass|composer|primary artist/i,
+      :technical => /engineer|producer|mixing|mastering|tracking/i
+    }
 
     creds = album['credits'].map do |c|
       [c['name'], c['credit']]
     end.uniq
 
     grouped = creds.group_by do |artist, credit|
-      groups.detect{ |regex| regex.match credit }
-    end.values
+      groups.values.detect{ |regex| regex.match credit }
+    end
 
-    grouped[0].to_a + grouped[1].to_a + grouped[2].to_a
+    # artists, then engineers, then everyone else
+    grouped[groups[:artistic]].to_a + grouped[groups[:technical]].to_a + grouped[nil].to_a
   end
 
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
