@@ -88,9 +88,10 @@ class LinerNotes < Processing::App
   def draw_footer
     pos = current_position
 
-    line 0, height-30, width, height-30
-    text "#{@song[:artist].titleize} - #{@song[:album].titleize}", 5, height-15
-    text "#{pos[:track_location]}/#{pos[:track_duration]}", width-120, height-15
+    complete_pixels = (width * pos[:percent_complete]).floor
+    stroke_weight(5)
+    line 0, height-5, complete_pixels, height-5
+    text pos[:track_location], complete_pixels+10, height-10
   end
 
   def draw_lyrics
@@ -213,7 +214,8 @@ class LinerNotes < Processing::App
 
     {
      :track_location => formatted_track_location(pieces[0]),
-     :track_duration => formatted_track_location(pieces[1])
+     :track_duration => formatted_track_location(pieces[1]),
+     :percent_complete => pieces[0].to_f / pieces[1].to_f
     }
   end
 
