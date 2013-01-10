@@ -2,9 +2,11 @@ require 'rubygems'
 require 'ruby-processing'
 require 'lib/ext/string'
 require 'lib/line'
+require 'lib/links'
 require 'lib/cache'
 require 'lib/itunes'
 require 'lib/rovi'
+require 'lib/artist_link'
 require 'lib/echonest'
 require 'lib/musix_match'
 require 'lib/paginator'
@@ -56,7 +58,7 @@ class LinerNotes < Processing::App
     smooth
 
     update_track
-    cursor Paginator.hovering?(mouse_x, mouse_y) ? HAND : ARROW
+    cursor Links.hovering?(mouse_x, mouse_y) ? HAND : ARROW
   end
 
   def x(coord=0)
@@ -144,24 +146,28 @@ class LinerNotes < Processing::App
     @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       text(contrib.last, 200, l.curr)
+      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first))
     end
 
     @contributors_paginator.draw_links(X_SPLIT - 80, height-50)
   end
 
-  # TODO Encapsulate credits in a class
   def draw_credits
     return unless @individual_credits && @individual_credits.any?
 
-    # TODO: User-selected artist
-    f = @individual_credits.keys.sort.first
-    artist = @individual_credits[f]
+    if ArtistLink.selected
+      artist = @individual_credits[ArtistLink.selected]
+    else
+      f = @individual_credits.keys.sort.first
+      artist = @individual_credits[f]
+    end
 
     text_size 32
     text(artist.name, x(X_SPLIT), 20)
     text_size 14
     l = Line.new(32)
 
+    # Try to show the artist's contribution to the current album first
     if @album_credits and credit = @album_credits.detect{ |d| d[0] =~ /#{artist.name}/i }
       album_credit = credit.last
     else
@@ -171,7 +177,7 @@ class LinerNotes < Processing::App
     @credits_paginator.set_content(artist.formatted_credits(album_credit))
 
     @credits_paginator.page.each do |credit|
-      if credit.is_a? String
+      if credit.is_a? String # credit name separator/heading
         str = credit
       else
         performer = credit['primaryartists'].first['name']
@@ -188,9 +194,8 @@ class LinerNotes < Processing::App
   end
 
   def mouse_pressed
-    #return unless mouse_y >= y_of_pagination
-    # do something if clicked < or >
-    Paginator.click(mouse_x, mouse_y)
+    # handle any link clicks
+    Links.click(mouse_x, mouse_y)
   end
 
   # @return [Hash]

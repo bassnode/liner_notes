@@ -161,8 +161,7 @@ class MusicCredits < Rovi
   end
 
   # Add the credit role as a member of the returned array
-  # for easier display.
-  # Als sort by role and year
+  # for easier display, sorted by role and year.
   #
   # @param [String,NilClass] the credit to favor/place at beginning
   # @return [Array<Hash,String>] the credits
@@ -184,7 +183,7 @@ class MusicCredits < Rovi
       # When it changes, insert the role title as a marker.
       if role.nil? or curr_role.downcase != role.downcase
         role = curr_role
-        preferred = !preferred_role.nil? && role =~ /#{preferred_role}/i ? true : false
+        preferred = !preferred_role.nil? && role =~ /^#{preferred_role}/i ? true : false
 
         if preferred
           preferred_array << curr_role

@@ -1,11 +1,6 @@
 class Paginator
 
-  CLICK_PAD = 10
   include Processing::Proxy
-
-  # Keep a map of all the next/prev links so we can act
-  # upon the correct Paginator when there is a click.
-  @@links = {}
 
   attr_accessor :items, :num_items,
                 :current_page, :num_pages, :per_page
@@ -41,8 +36,8 @@ class Paginator
     text(txt, x + 16, y)
     text('>', next_x, y)
 
-    self.class.register_link(x, y, :prev_page!, self)
-    self.class.register_link(next_x, y, :next_page!, self)
+    Links.register(x, y, :prev_page!, self)
+    Links.register(next_x, y, :next_page!, self)
   end
 
   def rewind!
@@ -70,47 +65,4 @@ class Paginator
     @offset = page * per_page
   end
 
-
-  # @param [Fixnum] the x coordinate of the link
-  # @param [Fixnum] the y coordinate of the link
-  # @param [Symbol] the method to call on click
-  # @param [Paginator] the paginator to send the click to
-  def self.register_link(x, y, method, obj)
-    key = [x,y]
-    @@links[key] ||= [method, obj]
-  end
-
-  # Increments/decrements the current_page if the
-  # x/y coords of the click hit a paginator link.
-  #
-  # @param [Fixnum] the x coordinate of the click
-  # @param [Fixnum] the y coordinate of the click
-  def self.click(mouse_x, mouse_y)
-    if clicked = hovered_link(mouse_x, mouse_y)
-      direction, paginator = @@links[clicked]
-      paginator.send(direction)
-    end
-  end
-
-  # @param [Fixnum] the x coordinate of the mouse
-  # @param [Fixnum] the y coordinate of the mouse
-  # @return [Boolean] whether the mouse is over a link
-  def self.hovering?(mouse_x, mouse_y)
-    !!hovered_link(mouse_x, mouse_y)
-  end
-
-  # @param [Fixnum] the x coordinate of the mouse
-  # @param [Fixnum] the y coordinate of the mouse
-  # @return [Array<Fixnum>] hash key for @@links
-  def self.hovered_link(mouse_x, mouse_y)
-    @@links.keys.detect do |x, y|
-      if mouse_x >= x-CLICK_PAD && mouse_x <= x+CLICK_PAD
-        if mouse_y >= y-CLICK_PAD && mouse_y <= y+CLICK_PAD
-          true
-        end
-      else
-        false
-      end
-    end
-  end
 end
