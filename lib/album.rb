@@ -139,7 +139,7 @@ class Album < Rovi
       levenshtein(original_artist, artist['name'])
     end
 
-    artist_scores.min < 10 ? best : nil
+    artist_scores.min < 5 ? best : nil
   end
 
 end

@@ -109,9 +109,9 @@ class Rovi
     s = s.strip.downcase
     t = t.strip.downcase
 
-    m, n = s.length, t.length
+    return 0 if s == t
 
-    return 0 if m == n
+    m, n = s.length, t.length
 
     d = Array.new(m) { Array.new(n) { 0 } }
 
