@@ -14,7 +14,7 @@ require 'lib/musix_match'
 require 'lib/paginator'
 require 'ap'
 # Uncomment if needing debugger
- require 'lib/profiler'
+#require 'lib/profiler'
 
 # At least while developing
 Thread.abort_on_exception = true

@@ -2,15 +2,19 @@ require 'rubygems'
 require 'ruby-processing'
 require 'lib/ext/string'
 require 'lib/line'
+require 'lib/links'
 require 'lib/cache'
 require 'lib/itunes'
 require 'lib/rovi'
+require 'lib/album'
+require 'lib/music_credits'
+require 'lib/artist_link'
 require 'lib/echonest'
 require 'lib/musix_match'
 require 'lib/paginator'
 require 'ap'
 # Uncomment if needing debugger
-# require 'lib/profiler'
+#require 'lib/profiler'
 
 # At least while developing
 Thread.abort_on_exception = true
@@ -44,6 +48,8 @@ class LinerNotes < Processing::App
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)
 
+    @credits_paginator = Paginator.new
+    @contributors_paginator = Paginator.new
     update_track(true)
   end
 
@@ -54,6 +60,7 @@ class LinerNotes < Processing::App
     smooth
 
     update_track
+    cursor Links.hovering?(mouse_x, mouse_y) ? HAND : ARROW
   end
 
   def x(coord=0)
@@ -85,9 +92,10 @@ class LinerNotes < Processing::App
   def draw_footer
     pos = current_position
 
-    line 0, height-30, width, height-30
-    text "#{@song[:artist].titleize} - #{@song[:album].titleize}", 5, height-15
-    text "#{pos[:track_location]}/#{pos[:track_duration]}", width-120, height-15
+    complete_pixels = (width * pos[:percent_complete]).floor
+    stroke_weight(5)
+    line 0, height-5, complete_pixels, height-5
+    text pos[:track_location], complete_pixels+10, height-10
   end
 
   def draw_lyrics
@@ -134,40 +142,44 @@ class LinerNotes < Processing::App
   def draw_contributors
     return unless @album_credits
 
-    paginator = Paginator.new(@album_credits, :page => @contrib_page)
+    @contributors_paginator.set_content(@album_credits)
 
     l = Line.new(20)
-    paginator.page.each do |contrib|
+    @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       text(contrib.last, 200, l.curr)
+      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first))
     end
 
-    paginator.draw_links(X_SPLIT - 75, height-50)
+    @contributors_paginator.draw_links(X_SPLIT - 80, height-50)
   end
 
-  # TODO Encapsulate credits in a class
   def draw_credits
     return unless @individual_credits && @individual_credits.any?
 
-    # TODO: User-selected artist
-    f = @individual_credits.keys.sort.first
-    artist = @individual_credits[f]
+    if ArtistLink.selected
+      artist = @individual_credits[ArtistLink.selected]
+    else
+      f = @individual_credits.keys.sort.first
+      artist = @individual_credits[f]
+    end
 
     text_size 32
     text(artist.name, x(X_SPLIT), 20)
     text_size 14
     l = Line.new(32)
 
+    # Try to show the artist's contribution to the current album first
     if @album_credits and credit = @album_credits.detect{ |d| d[0] =~ /#{artist.name}/i }
       album_credit = credit.last
     else
       album_credit = nil
     end
 
-    paginator = Paginator.new(artist.formatted_credits(album_credit), :page => @credit_page)
+    @credits_paginator.set_content(artist.formatted_credits(album_credit))
 
-    paginator.page.each do |credit|
-      if credit.is_a? String
+    @credits_paginator.page.each do |credit|
+      if credit.is_a? String # credit name separator/heading
         str = credit
       else
         performer = credit['primaryartists'].first['name']
@@ -180,15 +192,12 @@ class LinerNotes < Processing::App
       text(str, x(X_SPLIT), l.next!)
     end
 
-    paginator.draw_links(width - 70, height-50)
+    @credits_paginator.draw_links(width - 80, height-50)
   end
 
   def mouse_pressed
-    #return unless mouse_y >= y_of_pagination
-    # do something if clicked < or >
-    puts mouse_x
-    puts mouse_y
-    puts "*"*20
+    # handle any link clicks
+    Links.click(mouse_x, mouse_y)
   end
 
   # @return [Hash]
@@ -212,7 +221,8 @@ class LinerNotes < Processing::App
 
     {
      :track_location => formatted_track_location(pieces[0]),
-     :track_duration => formatted_track_location(pieces[1])
+     :track_duration => formatted_track_location(pieces[1]),
+     :percent_complete => pieces[0].to_f / pieces[1].to_f
     }
   end
 
