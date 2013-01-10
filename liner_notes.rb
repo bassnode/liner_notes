@@ -30,6 +30,8 @@ class LinerNotes < Processing::App
   def setup
     size 1200, 600
 
+    frame_rate 3
+
     load_pixels
 
     # could be a newCachedThreadPool too if saves ram
