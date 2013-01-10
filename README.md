@@ -18,11 +18,12 @@ it's due, but also helps perpetuate the respect for "The Album" and all of its c
 mastering engineer; everyone deserves their credit.  Making the information explorable helps fans draw connections between and
 answer questions about albums, bands and contributors such as
 "I like the sound of this album - which other albums have been engineered by David Bottrill?", "I love the drums on this song,
-what other songs has Stewart Copeland played on?", etc.  It's my hope that Liner Notes will answer those questions.
+what other songs has Stewart Copeland played on?", etc.  It's my hope that Liner Notes will help revitalize the digital listening
+experience by answering these questions.
 
 Run
 ----
-Open Liner Notes.app
+Open `Liner Notes.app`
 
 To develop (with code-reloading)
 --------------------------------
@@ -32,6 +33,7 @@ To develop (with code-reloading)
 3. Run:
   * `bundle install`
   * `rp5 watch --jruby liner_notes.rb`
+4. Run `rake` to build the OSX app.
 
 
 __Original concept sketched out during MusicHackDay, San Francisco 2011__
