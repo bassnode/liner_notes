@@ -166,6 +166,13 @@ class LinerNotes < Processing::App
       artist = @individual_credits[f]
     end
 
+    # In the case where the HTTP requests to Rovi timeout
+    # and we get incomplete data:
+    return unless artist
+
+    reset_paginator = artist != @previous_artist
+    @previous_artist = artist
+
     text_size 32
     text(artist.name, x(X_SPLIT), 20)
     text_size 14
@@ -178,7 +185,7 @@ class LinerNotes < Processing::App
       album_credit = nil
     end
 
-    @credits_paginator.set_content(artist.formatted_credits(album_credit))
+    @credits_paginator.set_content(artist.formatted_credits(album_credit), reset_paginator)
 
     @credits_paginator.page.each do |credit|
       if credit.is_a? String # credit name separator/heading
