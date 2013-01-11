@@ -13,15 +13,20 @@ class Paginator
 
   # @return [Array] the collection to page through
   def page
-    items[@offset, per_page]
+    items[@offset, per_page] || []
   end
 
   # @param [Array] the content that will be paged through
-  def set_content(content)
+  # @param [Boolean] (false) whether to reset the current page to 0
+  def set_content(content, rewind=false)
     @items = content
     @num_items = items.size
     @num_pages = (num_items / per_page.to_f).ceil
-    @current_page ||= 0
+    if rewind
+      rewind!
+    else
+      @current_page ||= 0
+    end
   end
 
   # @param [Fixnum] the x coordinate for the pagination link
