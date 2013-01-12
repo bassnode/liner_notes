@@ -62,7 +62,7 @@ class Album < Rovi
 
       thread_pool.shutdown
       unless thread_pool.await_termination(1, TimeUnit::MINUTES)
-        puts "Timed out trying to get all the credits :("
+        LinerNotes.logger.error "Timed out trying to get all the credits :("
       end
 
       results

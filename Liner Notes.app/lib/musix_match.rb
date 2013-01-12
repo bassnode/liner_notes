@@ -24,7 +24,7 @@ class MusixMatch
         json['lyrics']['lyrics_body']
       end
     else
-      puts "No tracks returned from MusixMatch"
+      LinerNotes.logger.error "No tracks returned from MusixMatch"
     end
   end
 
@@ -37,7 +37,7 @@ class MusixMatch
       return json['message']['body']
     end
 
-    puts url
+    LinerNotes.logger.debug url
     raw = open(url).read
     json = JSON.parse(raw)
 
@@ -45,8 +45,8 @@ class MusixMatch
       cache!(raw, key)
       json['message']['body']
     else
-      puts "MusixMatch: #{json['message']['header']['status_code']} error for #{query}"
-      puts json['message']['body']
+      LinerNotes.logger.error "MusixMatch: #{json['message']['header']['status_code']} error for #{query}"
+      LinerNotes.logger.error json['message']['body']
     end
   end
 end

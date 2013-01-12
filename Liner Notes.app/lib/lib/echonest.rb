@@ -28,7 +28,7 @@ class Echonest
     end
 
     final_url = "#{URL}/#{resource}?#{@credentials}&#{query}"
-    puts final_url
+    LinerNotes.logger.debug final_url
     raw = open(final_url).read
 
     json = JSON.load(raw)
@@ -36,7 +36,7 @@ class Echonest
       cache!(raw, key)
       json['response']
     else
-      puts "Echonest error: #{json['response']['status']['message']}"
+      LinerNotes.logger.error "Echonest error: #{json['response']['status']['message']}"
     end
   end
 
