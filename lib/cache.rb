@@ -10,7 +10,6 @@ module Cache
     key = cache_key(*keys)
     local_cache = File.join(CACHE_DIR, key)
 
-    puts "Downloading and caching #{local_cache} KEY: #{keys.join('-')}"
     File.open(local_cache, 'w+') do |f|
       f.write(data)
     end
@@ -38,7 +37,7 @@ module Cache
     local_cache = File.join(CACHE_DIR, key)
 
     if cached?(*keys)
-      puts "Cache hit for #{key}"
+      LinerNotes.logger.debug "Cache hit for #{key}"
       if image_key? key
         # image file
         local_cache
@@ -63,6 +62,7 @@ module Cache
     if data = fetch_cached(uri)
       data
     else
+      LinerNotes.logger.debug "Downloading and caching #{uri} KEY: #{key}"
       cache!(open(uri).read, uri)
     end
   end

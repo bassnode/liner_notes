@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'ruby-processing'
+require 'lib/log_file'
 require 'lib/ext/string'
 require 'lib/line'
 require 'lib/links'
@@ -27,12 +28,18 @@ class LinerNotes < Processing::App
   X_MARGIN = 20
   Y_SPLIT = 300
 
+  class << self
+    attr_accessor :logger
+  end
+
   def setup
     size 1200, 600
 
     frame_rate 3
 
     load_pixels
+
+    setup_logging
 
     # could be a newCachedThreadPool too if saves ram
     @thread_pool = Executors.newFixedThreadPool(5)
@@ -67,6 +74,11 @@ class LinerNotes < Processing::App
 
   def x(coord=0)
     coord + X_MARGIN
+  end
+
+  def setup_logging
+    LinerNotes.logger = LogFile.instance
+    LinerNotes.logger.level = LogFile::DEBUG # Switch when in dev vs. app
   end
 
   def update_track(force=false)
@@ -255,19 +267,17 @@ class LinerNotes < Processing::App
       end
     end
 
-    @thread_pool.submit do
+    #@thread_pool.submit do
       #if lyrics = @musix_match.lyrics(@song[:artist], @song[:title])
         ## Create an Enumerator that we'll step through later
         #@lyrics = lyrics.lines.each_slice(LINES_PER_PANEL)
       #end
-    end
-
+    #end
   end
 
   # Sets all cached vars to nil
-  # and clears out text areas.
   def reset!
-    puts "--- RESETTING ---"
+    LinerNotes.logger.debug "--- RESETTING ---"
     @track_credits = nil
     @album_credits = nil
     @individual_credits = nil

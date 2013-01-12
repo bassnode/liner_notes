@@ -44,14 +44,14 @@ class Rovi
         json = cached
       else
         throttle!
-        puts uri
+        LinerNotes.logger.debug uri
         json = open(uri).read
         cache! json, *cache_keys
       end
 
       JSON.load(json)
     rescue OpenURI::HTTPError
-      puts $!.inspect
+      LinerNotes.logger.error $!.inspect
     end
   end
 
@@ -88,7 +88,7 @@ class Rovi
 
     @mutex.synchronize do
       if Rovi.last_request && Time.now.to_f - Rovi.last_request.to_f < next_request
-        puts "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
+        LinerNotes.logger.debug "*** Sleeping to avoid Rovi throttling notifications (#{REQUESTS_PER_SECOND} req/sec)"
         sleep 0.5
       end
     end
@@ -135,7 +135,7 @@ class Rovi
       end
     end
 
-    puts %Q{"#{s}" vs "#{t}" Score: #{d[m-1][n-1]}}
+    LinerNotes.logger.debug %Q{"#{s}" vs "#{t}" Score: #{d[m-1][n-1]}}
     d[m-1][n-1]
   end
 
