@@ -2,6 +2,7 @@ require 'thread'
 require 'digest/md5'
 require 'open-uri'
 require 'json'
+require 'socket'
 
 class Rovi
   include Cache
@@ -35,6 +36,16 @@ class Rovi
 
   def parameterize_hash(opts)
     opts.map{ |k,v| "#{k}=#{URI.escape(v)}"}.join('&')
+  end
+
+  def self.can_connect?
+    begin
+      Socket.gethostbyname URL.split('//').last
+    rescue SocketError
+      return false
+    end
+
+    true
   end
 
   def load_json(uri, *cache_keys)

@@ -17,11 +17,8 @@ require 'ap'
 # Uncomment if needing debugger
 #require 'lib/profiler'
 
-# At least while developing
-Thread.abort_on_exception = true
-
 class LinerNotes < Processing::App
-  import 'java.util.concurrent.Executors'
+  include_class java.util.concurrent.Executors
   include Cache
 
   X_SPLIT = 600
@@ -59,6 +56,7 @@ class LinerNotes < Processing::App
 
     @credits_paginator = Paginator.new
     @contributors_paginator = Paginator.new
+
     update_track(true)
   end
 
@@ -78,10 +76,32 @@ class LinerNotes < Processing::App
 
   def setup_logging
     LinerNotes.logger = LogFile.instance
-    LinerNotes.logger.level = LogFile::DEBUG # Switch when in dev vs. app
+    LinerNotes.logger.level = LogFile::DEBUG # TODO Switch when in dev vs. app
+  end
+
+  def have_internet?
+    if @connected.nil? ||                               # initial check
+       @connected == false && frame_count % 30 == 0 ||  # check for recovery
+       @connected && frame_count % 120 == 0             # ensure connection
+      @connected = Rovi.can_connect?
+    end
+
+    @connected
+  end
+
+  def show_connection_error
+    text "Cannot connect to the internet. \n Please check your connection.", X_SPLIT-100, Y_SPLIT
   end
 
   def update_track(force=false)
+
+    # TODO: Don't show this if we don't currently need the
+    # internet, i.e. all threads are done and we're not resetting
+    unless have_internet? # || all_threads_done?
+      show_connection_error
+      return
+    end
+
     @song = current_song
 
     fetch_album_details if force or song_changed?
@@ -103,6 +123,7 @@ class LinerNotes < Processing::App
     true
   end
 
+  # Draws the track position and progress bar
   def draw_footer
     pos = current_position
 
