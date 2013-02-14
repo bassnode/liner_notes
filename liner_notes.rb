@@ -97,6 +97,9 @@ class LinerNotes < Processing::App
 
     # TODO: Don't show this if we don't currently need the
     # internet, i.e. all threads are done and we're not resetting
+    #
+    # FIXME: After recovering from an initial missing net conn,
+    # the track doesn't update. Likely because it's missing force?
     unless have_internet? # || all_threads_done?
       show_connection_error
       return
