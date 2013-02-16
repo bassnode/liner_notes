@@ -186,7 +186,7 @@ class LinerNotes < Processing::App
     @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       text(contrib.last, 200, l.curr)
-      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first))
+      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first), :x_padding => text_width(contrib.first))
     end
 
     @contributors_paginator.draw_links(X_SPLIT - 80, height-50)
