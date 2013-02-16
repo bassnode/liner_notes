@@ -2,7 +2,6 @@ require 'lib/rovi'
 
 class MusicCredits < Rovi
 
-  attr_accessor :credits
   attr_reader :id, :name
 
 
@@ -12,9 +11,17 @@ class MusicCredits < Rovi
     super()
     @id = id
     @name = name
+  end
 
-    if result = get("data/#{VERSION}/name/musiccredits", {:nameid => @id},  @id)
-      @credits = result['credits']
+  # Lazily load the credits for the individual artist (@id)
+  # @return [Array<Hash>,NilClass] the credit hashes
+  def credits
+    @credits ||= begin
+      if result = get("data/#{VERSION}/name/musiccredits", {:nameid => @id},  @id)
+        result['credits']
+      else
+        nil
+      end
     end
   end
 
@@ -36,7 +43,7 @@ class MusicCredits < Rovi
     preferred = false
     preferred_array = []
 
-    credits = sorted_credits.map(&:last).inject([]) do |arr, c|
+    organized_credits = sorted_credits.map(&:last).inject([]) do |arr, c|
       curr_role = c['credit']
       # When it changes, insert the role title as a marker.
       if role.nil? or curr_role.downcase != role.downcase
@@ -59,7 +66,7 @@ class MusicCredits < Rovi
       arr
     end
 
-    preferred_array + credits
+    preferred_array + organized_credits
   end
 
 
