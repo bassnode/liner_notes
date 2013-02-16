@@ -55,14 +55,7 @@ class Album < Rovi
       results = {}
 
       album['credits'].each do |credit|
-        thread_pool.submit do
-          results[credit['name']] = MusicCredits.new(credit['id'], credit['name'])
-        end
-      end
-
-      thread_pool.shutdown
-      unless thread_pool.await_termination(1, TimeUnit::MINUTES)
-        LinerNotes.logger.error "Timed out trying to get all the credits :("
+        results[credit['name']] = MusicCredits.new(credit['id'], credit['name'])
       end
 
       results
@@ -116,10 +109,6 @@ class Album < Rovi
   end
 
   private
-
-  def thread_pool
-    @thread_pool ||= Executors.newFixedThreadPool(3)
-  end
 
   # @param [Hash] the results from a Rovi API search
   # @return [Hash,NilClass] the album which most closely matches
