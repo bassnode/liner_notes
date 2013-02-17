@@ -18,7 +18,10 @@ class MusicCredits < Rovi
   def credits
     @credits ||= begin
       if result = get("data/#{VERSION}/name/musiccredits", {:nameid => @id},  @id)
-        result['credits']
+        result['credits'].map do |c|
+          c['title'].strip!
+          c
+        end
       else
         nil
       end
@@ -76,6 +79,8 @@ class MusicCredits < Rovi
   #
   # @return [<Array(String,Hash)>] the sort value and credit details
   def sorted_credits
+    return [] unless credits
+
     formatted = credits.map do |c|
       ["#{c['credit']}_#{c['year']}", c]
     end
