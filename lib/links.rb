@@ -15,7 +15,7 @@ class Links
     end
 
     def add(o)
-      return if @hash_lookup.has_key?(o.hash)
+      return if @hash_lookup[o.hash]
       @hash_lookup[o.hash] = true
       super
     end
