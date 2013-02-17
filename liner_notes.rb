@@ -55,10 +55,10 @@ class LinerNotes < Processing::App
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)
 
-    @credits_paginator = Paginator.new
+    @credits_paginator      = Paginator.new
     @contributors_paginator = Paginator.new
 
-    Thread.new do
+    @thread_pool.submit do
       loop do
         if Http.busy?
           #fill(0)
@@ -69,8 +69,9 @@ class LinerNotes < Processing::App
           x = width - text_width(msg) - 8
           rect(x-7, 7, text_width(msg)+10, 20, 3, 3, 3, 3)
           text(msg, x, 16)
-          sleep 0.2
         end
+
+        sleep 0.2
       end
     end
 
