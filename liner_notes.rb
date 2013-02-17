@@ -10,6 +10,7 @@ require 'lib/itunes'
 require 'lib/rovi'
 require 'lib/album'
 require 'lib/music_credits'
+require 'lib/musicbrainz'
 require 'lib/artist_link'
 require 'lib/echonest'
 require 'lib/musix_match'
@@ -19,7 +20,7 @@ require 'ap'
 #require 'lib/profiler'
 
 class LinerNotes < Processing::App
-  include_class java.util.concurrent.Executors
+  java_import java.util.concurrent.Executors
   include Cache
 
   X_SPLIT = 600
@@ -316,11 +317,18 @@ class LinerNotes < Processing::App
     end
 
     @thread_pool.submit do
-      if album = Album.new(@song[:artist], @song[:album])
+      album = Album.new(@song[:artist], @song[:album])
+      if album.success?
         @album_credits = album.credits
         @individual_credits = album.credit_objects
         @track_credits = album.track_credits(@song)
         if image = album.image
+          @artwork = load_image(image)
+        end
+      end
+
+      unless @artwork
+        if image = MusicBrainz.new.cover_art(@song[:artist], @song[:album])
           @artwork = load_image(image)
         end
       end

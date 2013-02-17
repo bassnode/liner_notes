@@ -55,8 +55,8 @@ class Rovi
         json = cached
       else
         throttle!
-        LinerNotes.logger.debug uri
         LinerNotes.logger.debug "Starting Rovi request"
+        LinerNotes.logger.debug uri
         json = Http.get(uri)
         LinerNotes.logger.debug "Finished Rovi request"
         cache! json, *cache_keys

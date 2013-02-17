@@ -63,8 +63,9 @@ module Cache
     if data = fetch_cached(uri)
       data
     else
-      LinerNotes.logger.debug "Downloading and caching #{uri} KEY: #{key}"
+      LinerNotes.logger.debug "Starting download of #{uri}"
       file = Http.get(uri)
+      LinerNotes.logger.debug "Finished download of #{uri}"
       cache!(file, uri)
     end
   end
