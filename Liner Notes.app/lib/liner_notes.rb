@@ -2,6 +2,7 @@ require 'rubygems'
 require 'ruby-processing'
 require 'lib/log_file'
 require 'lib/ext/string'
+require 'lib/http'
 require 'lib/line'
 require 'lib/links'
 require 'lib/cache'
@@ -17,11 +18,8 @@ require 'ap'
 # Uncomment if needing debugger
 #require 'lib/profiler'
 
-# At least while developing
-Thread.abort_on_exception = true
-
 class LinerNotes < Processing::App
-  import 'java.util.concurrent.Executors'
+  include_class java.util.concurrent.Executors
   include Cache
 
   X_SPLIT = 600
@@ -59,6 +57,23 @@ class LinerNotes < Processing::App
 
     @credits_paginator = Paginator.new
     @contributors_paginator = Paginator.new
+
+    Thread.new do
+      loop do
+        if Http.busy?
+          #fill(0)
+          #background(255)
+          #stroke(195, 35, 35)
+          stroke_weight(1)
+          msg = "Loading..."
+          x = width - text_width(msg) - 8
+          rect(x-7, 7, text_width(msg)+10, 20, 3, 3, 3, 3)
+          text(msg, x, 16)
+          sleep 0.2
+        end
+      end
+    end
+
     update_track(true)
   end
 
@@ -69,6 +84,7 @@ class LinerNotes < Processing::App
     smooth
 
     update_track
+
     cursor Links.hovering?(mouse_x, mouse_y) ? HAND : ARROW
   end
 
@@ -78,10 +94,35 @@ class LinerNotes < Processing::App
 
   def setup_logging
     LinerNotes.logger = LogFile.instance
-    LinerNotes.logger.level = LogFile::DEBUG # Switch when in dev vs. app
+    LinerNotes.logger.level = LogFile::DEBUG # TODO Switch when in dev vs. app
+  end
+
+  def have_internet?
+    if @connected.nil? ||                               # initial check
+       @connected == false && frame_count % 30 == 0 ||  # check for recovery
+       @connected && frame_count % 120 == 0             # ensure connection
+      @connected = Rovi.can_connect?
+    end
+
+    @connected
+  end
+
+  def show_connection_error
+    text "Cannot connect to the internet. \n Please check your connection.", X_SPLIT-100, Y_SPLIT
   end
 
   def update_track(force=false)
+
+    # TODO: Don't show this if we don't currently need the
+    # internet, i.e. all threads are done and we're not resetting
+    #
+    # FIXME: After recovering from an initial missing net conn,
+    # the track doesn't update. Likely because it's missing force?
+    unless have_internet? # || all_threads_done?
+      show_connection_error
+      return
+    end
+
     @song = current_song
 
     fetch_album_details if force or song_changed?
@@ -103,6 +144,7 @@ class LinerNotes < Processing::App
     true
   end
 
+  # Draws the track position and progress bar
   def draw_footer
     pos = current_position
 
@@ -162,7 +204,7 @@ class LinerNotes < Processing::App
     @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       text(contrib.last, 200, l.curr)
-      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first))
+      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first), :x_padding => text_width(contrib.first))
     end
 
     @contributors_paginator.draw_links(X_SPLIT - 80, height-50)

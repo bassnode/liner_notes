@@ -1,4 +1,6 @@
 class ArtistLink
+  attr_reader :name
+
   class << self
     attr_accessor :selected
   end
@@ -8,7 +10,7 @@ class ArtistLink
   end
 
   def show
-    self.class.selected = @name
+    self.class.selected = name
   end
 
 end

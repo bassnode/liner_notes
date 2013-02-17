@@ -2,6 +2,7 @@ require 'thread'
 require 'digest/md5'
 require 'open-uri'
 require 'json'
+require 'socket'
 
 class Rovi
   include Cache
@@ -37,6 +38,16 @@ class Rovi
     opts.map{ |k,v| "#{k}=#{URI.escape(v)}"}.join('&')
   end
 
+  def self.can_connect?
+    begin
+      Socket.gethostbyname URL.split('//').last
+    rescue SocketError
+      return false
+    end
+
+    true
+  end
+
   def load_json(uri, *cache_keys)
 
     begin
@@ -45,7 +56,9 @@ class Rovi
       else
         throttle!
         LinerNotes.logger.debug uri
-        json = open(uri).read
+        LinerNotes.logger.debug "Starting Rovi request"
+        json = Http.get(uri)
+        LinerNotes.logger.debug "Finished Rovi request"
         cache! json, *cache_keys
       end
 

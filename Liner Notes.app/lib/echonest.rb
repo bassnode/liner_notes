@@ -29,7 +29,9 @@ class Echonest
 
     final_url = "#{URL}/#{resource}?#{@credentials}&#{query}"
     LinerNotes.logger.debug final_url
-    raw = open(final_url).read
+    LinerNotes.logger.debug "Starting Echonest request"
+    raw = Http.get(final_url)
+    LinerNotes.logger.debug "Finished Echonest request"
 
     json = JSON.load(raw)
     if json['response']['status']['code'].to_i == 0

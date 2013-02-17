@@ -37,9 +37,9 @@ class Paginator
     txt = "#{current_page+1}/#{num_pages}"
     next_x = x + text_width(txt).to_i + 20
 
-    text('<', x, y)
+    text('◄', x, y)
     text(txt, x + 16, y)
-    text('>', next_x, y)
+    text('►', next_x, y)
 
     Links.register(x, y, :prev_page!, self)
     Links.register(next_x, y, :next_page!, self)
