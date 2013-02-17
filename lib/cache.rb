@@ -7,6 +7,7 @@ module Cache
   # @return [String] either the file path to the resource (image)
   #                  or the data itself (JSON)
   def cache!(data, *keys)
+    return unless data
     key = cache_key(*keys)
     local_cache = File.join(CACHE_DIR, key)
 
