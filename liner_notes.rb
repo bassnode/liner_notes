@@ -203,8 +203,20 @@ class LinerNotes < Processing::App
     l = Line.new(20)
     @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
-      text(contrib.last, 200, l.curr)
-      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first), :x_padding => text_width(contrib.first))
+      # Make sure the text doesn't flow over
+      parts       = contrib.last.split(',')
+      second_part = parts.shift
+      x_start     = 200
+      max_width   = X_SPLIT - x_start -2
+      parts.each do |role|
+        if text_width(second_part) + text_width(role) <= max_width-2
+          second_part << ", #{role}"
+        end
+      end
+
+      text(second_part, x_start, l.curr)
+
+      Links.register(10, l.curr, :show, ArtistLink.new(contrib.first), :x_padding => X_SPLIT)
     end
 
     @contributors_paginator.draw_links(X_SPLIT - 80, height-50)
@@ -259,7 +271,7 @@ class LinerNotes < Processing::App
       text(str, x(X_SPLIT), l.next!)
     end
 
-    @credits_paginator.draw_links(width - 80, height-50)
+    @credits_paginator.draw_links(width - 80, height-20)
   end
 
   def mouse_pressed
