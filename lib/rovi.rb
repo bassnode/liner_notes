@@ -50,22 +50,18 @@ class Rovi
 
   def load_json(uri, *cache_keys)
 
-    begin
-      if cached = fetch_cached(*cache_keys)
-        json = cached
-      else
-        throttle!
-        LinerNotes.logger.debug "Starting Rovi request"
-        LinerNotes.logger.debug uri
-        json = Http.get(uri)
-        LinerNotes.logger.debug "Finished Rovi request"
-        cache! json, *cache_keys
-      end
-
-      JSON.load(json)
-    rescue OpenURI::HTTPError
-      LinerNotes.logger.error $!.inspect
+    if cached = fetch_cached(*cache_keys)
+      json = cached
+    else
+      throttle!
+      LinerNotes.logger.debug "Starting Rovi request"
+      LinerNotes.logger.debug uri
+      json = Http.get(uri)
+      LinerNotes.logger.debug "Finished Rovi request"
+      cache! json, *cache_keys
     end
+
+    JSON.load(json)
   end
 
   # @param [String] URL resource/API endpoint
