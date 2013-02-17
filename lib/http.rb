@@ -15,7 +15,13 @@ class Http
 
     def get(uri)
       mutex.synchronize{ @@busy = true }
-      response = open(uri).read
+      response = nil
+      begin
+        response = open(uri).read
+      rescue => e
+        LinerNotes.logger.error "Couldn't get #{uri}: #{e}"
+      end
+
       mutex.synchronize{ @@busy = false }
 
       response
