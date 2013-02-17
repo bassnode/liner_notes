@@ -2,6 +2,7 @@ require 'rubygems'
 require 'ruby-processing'
 require 'lib/log_file'
 require 'lib/ext/string'
+require 'lib/http'
 require 'lib/line'
 require 'lib/links'
 require 'lib/cache'
@@ -57,6 +58,22 @@ class LinerNotes < Processing::App
     @credits_paginator = Paginator.new
     @contributors_paginator = Paginator.new
 
+    Thread.new do
+      loop do
+        if Http.busy?
+          #fill(0)
+          #background(255)
+          #stroke(195, 35, 35)
+          stroke_weight(1)
+          msg = "Loading..."
+          x = width - text_width(msg) - 8
+          rect(x-7, 7, text_width(msg)+10, 20, 3, 3, 3, 3)
+          text(msg, x, 16)
+          sleep 0.2
+        end
+      end
+    end
+
     update_track(true)
   end
 
@@ -67,6 +84,7 @@ class LinerNotes < Processing::App
     smooth
 
     update_track
+
     cursor Links.hovering?(mouse_x, mouse_y) ? HAND : ARROW
   end
 

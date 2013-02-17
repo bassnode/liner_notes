@@ -22,7 +22,9 @@ class LogFile
 
   def add(msg, level=:info)
     stamp = Time.now.strftime '%Y-%m-%d %H:%M:%S'
-    @log.write "[#{stamp}] #{msg}\n"
+    output = "[#{stamp}] #{msg}"
+    puts output # TEMP
+    @log.write "#{output}\n"
   end
 
   alias << add

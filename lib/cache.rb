@@ -63,7 +63,8 @@ module Cache
       data
     else
       LinerNotes.logger.debug "Downloading and caching #{uri} KEY: #{key}"
-      cache!(open(uri).read, uri)
+      file = Http.get(uri)
+      cache!(file, uri)
     end
   end
 
