@@ -181,6 +181,11 @@ class LinerNotes < Processing::App
     end
 
     text(heading, 10, 16)
+    # TODO: Make album spine look realistic:
+    stroke_weight(1)
+    stroke(123, 100, 100)
+    line(X_SPLIT, 0, X_SPLIT, height)
+    stroke(255)
   end
 
   def draw_artwork
@@ -208,12 +213,12 @@ class LinerNotes < Processing::App
     @contributors_paginator.page.each do |contrib|
       text(contrib.first, 10, l.next!)
       # Make sure the text doesn't flow over
+      x_start     = 200
+      max_width   = X_SPLIT - x_start - 2
       parts       = contrib.last.split(',')
       second_part = parts.shift
-      x_start     = 200
-      max_width   = X_SPLIT - x_start -2
       parts.each do |role|
-        if text_width(second_part) + text_width(role) <= max_width-2
+        if text_width(second_part) + text_width(role) <= max_width - 2
           second_part << ", #{role}"
         end
       end
@@ -231,9 +236,12 @@ class LinerNotes < Processing::App
 
     if ArtistLink.selected
       artist = @individual_credits[ArtistLink.selected]
+      # Try, naively to get the credits for the albun's main artist
+    elsif current_artist = @individual_credits.keys.detect{ |c| c =~ /#{@song[:artist]}/i }
+      artist = @individual_credits[current_artist]
     else
-      f = @individual_credits.keys.sort.first
-      artist = @individual_credits[f]
+      any_artist = @individual_credits.keys.sort.first
+      artist = @individual_credits[any_artist]
     end
 
     # In the case where the HTTP requests to Rovi timeout
@@ -241,8 +249,8 @@ class LinerNotes < Processing::App
     if !artist
       puts "CHOSEN: #{ArtistLink.selected}"
       puts @individual_credits.keys
+      return
     end
-    return unless artist
 
     reset_paginator = artist != @previous_artist
     @previous_artist = artist
