@@ -19,6 +19,8 @@ require 'ap'
 # Uncomment if needing debugger
 #require 'lib/profiler'
 
+Thread.abort_on_exception = true
+
 class LinerNotes < Processing::App
   java_import java.util.concurrent.Executors
   include Cache

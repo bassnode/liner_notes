@@ -20,6 +20,9 @@ class MusicBrainz
     end
   end
 
+  # @param [String]
+  # @param [String]
+  # @return [String,NilClass]
   def release(artist, title)
     xml = get("artist:#{artist} AND release:#{title}")
     ids = []
