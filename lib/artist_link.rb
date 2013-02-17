@@ -3,6 +3,10 @@ class ArtistLink
 
   class << self
     attr_accessor :selected
+
+    def reset!
+      self.selected = nil
+    end
   end
 
   def initialize(name)

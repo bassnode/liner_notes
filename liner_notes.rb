@@ -222,6 +222,10 @@ class LinerNotes < Processing::App
 
     # In the case where the HTTP requests to Rovi timeout
     # and we get incomplete data:
+    if !artist
+      puts "CHOSEN: #{ArtistLink.selected}"
+      puts @individual_credits.keys
+    end
     return unless artist
 
     reset_paginator = artist != @previous_artist
@@ -327,6 +331,8 @@ class LinerNotes < Processing::App
     @extra_artwork = nil
     @lyrics = nil
     @displayed_lyrics = nil
+    Links.reset!
+    ArtistLink.reset!
   end
 
   def formatted_track_location(pos)

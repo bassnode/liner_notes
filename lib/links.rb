@@ -73,6 +73,10 @@ class Links
   # set to hold all the links
   @@links = LinkSet.new
 
+  def self.reset!
+    @@links = LinkSet.new
+  end
+
   # @param [Fixnum] the x coordinate of the link
   # @param [Fixnum] the y coordinate of the link
   # @param [Symbol] the method to call on click
