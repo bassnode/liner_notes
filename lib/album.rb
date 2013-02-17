@@ -24,13 +24,17 @@ class Album < Rovi
     end
   end
 
+  def success?
+    !album.nil?
+  end
+
   # Attempts to logically group the album's contributors by
   # type of contributions.
   # TODO: Make smarter.
   #
   # @return [Array<String>, NilClass] in format "Name - Contribution"
   def credits
-    return unless album['credits']
+    return unless success? && album['credits']
 
     groups = {
       :artistic => /guitar|drums|vocals|bass|composer|primary artist/i,
@@ -51,7 +55,7 @@ class Album < Rovi
 
   # @return [Hash{String => MusicCredits}, NilClass] credits keyed by contributor name
   def credit_objects
-    if album['credits']
+    if success? && album['credits']
       results = {}
 
       album['credits'].each do |credit|
@@ -65,7 +69,7 @@ class Album < Rovi
 
   # @return [Array<String>, NilClass] list of contributors for a song
   def track_credits(track)
-    return unless album['tracks']
+    return unless success? && album['tracks']
 
     track = album['tracks'].detect do |t|
       t['title'].downcase == track[:title].downcase
@@ -92,7 +96,7 @@ class Album < Rovi
 
   # @return [String, NilClass] the 2nd largest image
   def image
-    if album['images'] && album['images'].length > 0 && album['images'][0]['front']
+    if success? && album['images'] && album['images'].length > 0 && album['images'][0]['front']
       images = album['images'][0]['front'].sort_by{ |cover| cover['width'].to_i }
       image = images.last['url'].split('?').first
 
@@ -103,7 +107,7 @@ class Album < Rovi
   end
 
   def release_info
-    if album['releases']
+    if success? && album['releases']
       album['releases'].detect{ |a| a['isMain'] }
     end
   end
