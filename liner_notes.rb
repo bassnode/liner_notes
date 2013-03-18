@@ -51,9 +51,6 @@ class LinerNotes < Processing::App
     #@font = create_font "monaco", 14
     text_font @font, 14
 
-    Rovi.shared_secret = "7Qbqyxz8TT"
-    Rovi.api_key = "cc94xnqu4u5hwfqrdeq4umte"
-
     @echonest    = Echonest.new
     @musix_match = MusixMatch.new
     @itunes      = ITunes.new(true)

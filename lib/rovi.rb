@@ -14,8 +14,20 @@ class Rovi
   SEARCH_VERSION = 'v2.1'
   REQUESTS_PER_SECOND = 5
 
+  # TODO: Make these required by the user
+  @@shared_secret = "7Qbqyxz8TT"
+  @@api_key = "cc94xnqu4u5hwfqrdeq4umte"
+
   class << self
-    attr_accessor :shared_secret, :api_key, :last_request
+    attr_accessor :last_request
+
+    def shared_secret
+      @@shared_secret
+    end
+
+    def api_key
+      @@api_key
+    end
   end
 
   def initialize
