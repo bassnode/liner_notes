@@ -7,7 +7,6 @@ class Http
 
 
   class << self
-    include Processing::Proxy
 
     def mutex
       @@mutex
