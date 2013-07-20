@@ -11,6 +11,8 @@ task :clear_cache do
   sh "rm -Rf data/cache/*"
 end
 
+desc "Output album contributors at the command line. e.g.:
+      ARTIST=portishead ALBUM=dummy rake credits"
 task :credits do
   # Otherwise code will whine:
   class LinerNotes
